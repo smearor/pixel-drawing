@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+  APT_PACKAGES: curl build-essential pkg-config libgtk-4-dev libglib2.0-dev
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish to crates.io
+    runs-on: ubuntu-26.04
+    steps:
+      - name: VCS Checkout
+        uses: actions/checkout@v7
+      - name: Checkout nerd-fonts-gtk dependency
+        uses: actions/checkout@v7
+        with:
+          repository: smearor/nerd-fonts-gtk
+          path: ../nerd-fonts-gtk
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.APT_PACKAGES }}
+      - name: Install rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Build (Release Mode)
+        run: cargo build --release --verbose
+      - name: Dry-run publish
+        run: cargo publish --dry-run --locked --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Publish
+        run: cargo publish --locked --token ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
