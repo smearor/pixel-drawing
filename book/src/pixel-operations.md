@@ -8,9 +8,9 @@ Fills the pixel buffer with a solid color. Accepts any type that implements
 `Into<Color<u8>>`, so both `Color<f64>` and `Color<u8>` work:
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(64, 64));
 buf.fill_background(Color::<f64>::new(0.2, 0.5, 0.8));

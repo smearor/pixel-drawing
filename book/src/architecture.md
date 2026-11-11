@@ -6,7 +6,6 @@
 pixel-drawing/
 ├── src/
 │   ├── lib.rs              # Module declarations and re-exports
-│   ├── color.rs            # Color<T> type, conversions, hex parsing
 │   ├── render_context.rs   # Builder pattern for multi-element renders
 │   └── drawing/
 │       ├── mod.rs          # Module declarations and re-exports
@@ -27,11 +26,6 @@ pixel-drawing/
 All rendering functions operate on raw `&mut [u8]` RGBA pixel buffers. This
 makes the library suitable for headless rendering, texture generation, and
 embedded use cases.
-
-### Feature Gating
-
-The `render` feature gates all drawing functionality. Without it, only the
-`Color` type is available (for color manipulation without rendering).
 
 ### Font Dependency
 

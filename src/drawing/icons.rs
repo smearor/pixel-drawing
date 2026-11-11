@@ -5,12 +5,12 @@
 
 use super::glyph::glyph_fit_scale;
 use super::progress::default_text_color;
-use crate::color::Color;
 use crate::pixel_buffer::PixelBuffer;
 use ab_glyph::Font;
 use ab_glyph::Glyph;
 use ab_glyph::PxScale;
 use nerd_fonts_rs::fonts::nerd_font;
+use smearor_commons_color::Color;
 use tracing::debug;
 
 impl PixelBuffer {
@@ -76,7 +76,7 @@ impl PixelBuffer {
         let center_y = size.width() / 2;
         let radius = (size.width().min(size.height()) / 3).max(8);
         let color = default_text_color(is_active);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
 
         let cx = center_x as i32;
         let cy = (center_y as i32) - (size.height() as i32 / 6);
@@ -175,13 +175,10 @@ impl PixelBuffer {
 mod tests {
     use super::*;
     use crate::size::Size;
-    use nerd_fonts_rs::icons::IconName;
-    use nerd_fonts_rs::icons::IconNameExt;
+    use nerd_fonts_rs::NerdFonts;
 
     fn resolve_codepoint(name: &str) -> Option<char> {
-        IconName::from_glyph_name(name.strip_prefix("nf-").unwrap_or(name))
-            .and_then(|n| n.codepoint())
-            .map(|c| c.as_char())
+        NerdFonts::codepoint(name).map(|c| c.as_char())
     }
 
     #[test]
@@ -191,7 +188,7 @@ mod tests {
         buf.draw_icon_placeholder(false);
 
         let color = default_text_color(false);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
         let center_x = size.width() / 2;
         let center_y = size.width() / 2;
         let cx = center_x as i32;
@@ -211,7 +208,7 @@ mod tests {
         buf.draw_icon_placeholder(true);
 
         let active_color = default_text_color(true);
-        let bytes = active_color.to_bytes();
+        let bytes: [u8; 4] = active_color.into();
         let center_x = size.width() / 2;
         let center_y = size.width() / 2;
         let cx = center_x as i32;
@@ -259,7 +256,7 @@ mod tests {
         buf.draw_nerd_font_icon("nf-xx-nonexistent", false, resolve_codepoint, None);
 
         let placeholder_color = default_text_color(false);
-        let bytes = placeholder_color.to_bytes();
+        let bytes: [u8; 4] = placeholder_color.into();
         let center_x = size.width() / 2;
         let center_y = size.width() / 2;
         let cx = center_x as i32;

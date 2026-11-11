@@ -3,8 +3,8 @@
 //! Provides progress bar rendering and the default text color used across
 //! icon, text, and bitmap rendering modules.
 
-use crate::color::Color;
 use crate::pixel_buffer::PixelBuffer;
+use smearor_commons_color::Color;
 
 /// Default text color based on active state.
 pub(super) fn default_text_color(is_active: bool) -> Color<u8> {
@@ -24,7 +24,7 @@ impl PixelBuffer {
         let color: Color<u8> = color.into();
         let bar_y = size.height().saturating_sub(bar_height + 2);
         let fill_width = ((size.width() as f32 * value.clamp(0.0, 1.0)) as u32).min(size.width());
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
 
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.width() {
@@ -65,7 +65,7 @@ mod tests {
 
         let bar_height = 4u32;
         let bar_y = size.height().saturating_sub(bar_height + 2);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.width() {
@@ -84,7 +84,7 @@ mod tests {
 
         let bar_height = 4u32;
         let bar_y = size.height().saturating_sub(bar_height + 2);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
         let fill_width = (size.width() as f32 * 0.5) as u32;
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
@@ -109,7 +109,7 @@ mod tests {
 
         let bar_height = 4u32;
         let bar_y = size.height().saturating_sub(bar_height + 2);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.width() {
@@ -129,7 +129,7 @@ mod tests {
 
         let bar_height = 4u32;
         let bar_y = size.height().saturating_sub(bar_height + 2);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.width() {
@@ -166,7 +166,7 @@ mod tests {
 
         let bar_height = 4u32;
         let bar_y = size.height().saturating_sub(bar_height + 2);
-        let expected = color_f64.to_u8().to_bytes();
+        let expected: [u8; 4] = Color::<u8>::from(color_f64).into();
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.width() {

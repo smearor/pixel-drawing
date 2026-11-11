@@ -10,9 +10,9 @@ to the Nerd Font if the label font is unavailable, and to a bitmap renderer if
 no font is available.
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(96, 96));
 buf.draw_label_text(
@@ -30,9 +30,9 @@ Draws text centered horizontally at a given y-baseline with a configurable
 font size:
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(128, 64));
 buf.draw_text_centered(

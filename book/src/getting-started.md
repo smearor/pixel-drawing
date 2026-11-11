@@ -56,9 +56,9 @@ nerd-fonts-gtk = { path = "../nerd-fonts-gtk", default-features = false, feature
 ### Fill and Draw an Icon
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(96, 96));
 buf.fill_background(Color::<f64>::new(0.1, 0.1, 0.1));
@@ -73,10 +73,10 @@ buf.draw_nerd_font_icon(
 ### Using RenderContext
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::render_context::RenderContext;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(96, 96));
 let mut ctx = RenderContext::new(&mut buf)

@@ -3,7 +3,6 @@
 - [Introduction](./introduction.md)
 - [Getting Started](./getting-started.md)
 - [Architecture](./architecture.md)
-- [Color Types](./color.md)
 - [Pixel Operations](./pixel-operations.md)
 - [Glyph Rendering](./glyph-rendering.md)
 - [Icon Rendering](./icon-rendering.md)

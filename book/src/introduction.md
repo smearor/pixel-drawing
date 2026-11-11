@@ -1,14 +1,13 @@
 # Introduction
 
 **pixel-drawing** is a Rust library for software rendering onto raw RGBA pixel
-buffers. It provides color types, glyph rasterization, icon rendering, text
-layout, progress bars, and a builder-pattern render context — all without
-requiring a windowing system or GPU.
+buffers. It provides glyph rasterization, icon rendering, text layout,
+progress bars, and a builder-pattern render context — all without requiring a
+windowing system or GPU. Colors use the generic `Color<T>` type from
+`smearor-commons-color` (`Color<f64>` normalized, `Color<u8>` pixel-native).
 
 ## What Does It Do?
 
-- **Color Types** — Generic `Color<T>` with `Color<f64>` and `Color<u8>`
-  instantiations, hex parsing, and conversions
 - **Pixel Operations** — `fill_background`, `blend_pixel`, and a bitmap text
   fallback renderer
 - **Glyph Rendering** — Single-glyph rasterization with alpha blending using
@@ -28,11 +27,9 @@ requiring a windowing system or GPU.
 graph TD
     Lib["pixel-drawing"]
 
-    Color["color.rs<br/>Color<T>, Color<f64>, Color<u8>"]
     Drawing["drawing/<br/>Pixel, glyph, icon, text, progress"]
     RenderContext["render_context.rs<br/>Builder pattern"]
 
-    Lib --> Color
     Lib --> Drawing
     Lib --> RenderContext
 

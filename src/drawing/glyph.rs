@@ -4,7 +4,6 @@
 //! scale computation (with caching), and text width truncation.
 
 use super::pixel::blend_pixel;
-use crate::color::Color;
 use crate::pixel_buffer::PixelBuffer;
 use ab_glyph::Font;
 use ab_glyph::FontVec;
@@ -12,6 +11,7 @@ use ab_glyph::Glyph;
 use ab_glyph::PxScaleFont;
 use ab_glyph::ScaleFont;
 use ahash::AHashMap;
+use smearor_commons_color::Color;
 use std::cell::RefCell;
 
 thread_local! {
@@ -97,7 +97,7 @@ impl PixelBuffer {
             let bounds = outline.px_bounds();
             let px = bounds.min.x.round() as i32;
             let py = bounds.min.y.round() as i32;
-            let bytes = color.to_bytes();
+            let bytes: [u8; 4] = color.into();
 
             outline.draw(|gx, gy, coverage| {
                 let x = px + gx as i32;

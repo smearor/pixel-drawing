@@ -2,10 +2,10 @@
 name = "pixel-drawing"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.98.0"
 license = "MIT"
 authors = ["Andreas Schaeffer <hanack@nooblounge.net>"]
-description = "Software rendering utilities for pixel buffers: color types, glyph rendering, text, icons, and progress bars"
+description = "Software rendering utilities for pixel buffers: glyph rendering, text, icons, and progress bars"
 repository = "https://github.com/smearor/pixel-drawing"
 homepage = "https://github.com/smearor/pixel-drawing"
 readme = "README.md"
@@ -19,6 +19,7 @@ ahash = "0.8"
 bytemuck = "1.23"
 tracing = "0.1"
 thiserror = "2.0"
+smearor-commons-color = { git = "https://github.com/smearor/smearor-commons.git" }
 
 [dev-dependencies]
 gtk4 = "0.11"

@@ -15,12 +15,12 @@
 //! cargo run --example interactive_demo
 //! ```
 
-use nerd_fonts_rs::{IconName};
-use nerd_fonts_rs::{init};
-use pixel_drawing::color::Color;
+use nerd_fonts_rs::NerdFonts;
+use nerd_fonts_rs::init;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::render_context::RenderContext;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 use gtk4::Align;
 use gtk4::Application;
@@ -119,9 +119,7 @@ fn build_ui(app: &Application) {
 // ---------------------------------------------------------------------------
 
 fn resolve_codepoint(name: &str) -> Option<char> {
-    IconName::from_glyph_name(name.strip_prefix("nf-").unwrap_or(name))
-        .and_then(|n| n.codepoint())
-        .map(|c| c.as_char())
+    NerdFonts::codepoint(name).map(|c| c.as_char())
 }
 
 // ---------------------------------------------------------------------------

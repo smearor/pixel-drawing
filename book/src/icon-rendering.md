@@ -9,9 +9,9 @@ name is resolved to a codepoint via a caller-provided resolver function. If the
 font or icon is unavailable, a circular placeholder is drawn instead.
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(96, 96));
 buf.draw_nerd_font_icon(
@@ -45,9 +45,9 @@ buf.draw_icon_placeholder(false);
 Draws a Nerd Font icon by its Unicode codepoint at a custom position and size:
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(64, 64));
 buf.draw_nerd_font_codepoint(

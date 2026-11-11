@@ -8,9 +8,9 @@ color defaults.
 Draws a horizontal progress bar at the bottom of the image:
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(256, 32));
 buf.draw_progress_bar(

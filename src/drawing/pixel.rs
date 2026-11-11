@@ -4,8 +4,8 @@
 //! background fills, alpha blending, and bitmap text fallback.
 
 use super::progress::default_text_color;
-use crate::color::Color;
 use crate::pixel_buffer::PixelBuffer;
+use smearor_commons_color::Color;
 
 /// Alpha-blend a source color over an existing pixel.
 pub(super) fn blend_pixel(dst: &[u8], src: &[u8; 4], alpha: u8) -> [u8; 4] {
@@ -35,7 +35,8 @@ impl PixelBuffer {
         let pixels = self.pixels_mut();
         let expected = (size.width() as usize) * (size.height() as usize) * 4;
         let len = pixels.len().min(expected);
-        let color_u32 = u32::from_le_bytes(color.into().to_bytes());
+        let color: Color<u8> = color.into();
+        let color_u32 = u32::from_le_bytes(color.into());
         let pixels_u32: &mut [u32] = bytemuck::cast_slice_mut(&mut pixels[..len]);
         pixels_u32.fill(color_u32);
     }
@@ -45,7 +46,7 @@ impl PixelBuffer {
         let size = self.size();
         let pixels = self.pixels_mut();
         let color = default_text_color(false);
-        let bytes = color.to_bytes();
+        let bytes: [u8; 4] = color.into();
         let char_w = 6u32;
         let char_h = 8u32;
         let total_w = text.len() as u32 * char_w;
@@ -75,7 +76,7 @@ mod tests {
     fn fill_background_fills_all_pixels() {
         let mut buf = PixelBuffer::new(Size::new(4, 3));
         let color = Color::<f64>::new(10.0 / 255.0, 20.0 / 255.0, 30.0 / 255.0);
-        let expected = color.to_u8().to_bytes();
+        let expected: [u8; 4] = Color::<u8>::from(color).into();
         buf.fill_background(color);
 
         for px in buf.pixels().chunks_exact(4) {
@@ -87,7 +88,7 @@ mod tests {
     fn fill_background_single_pixel() {
         let mut buf = PixelBuffer::new(Size::new(1, 1));
         let color = Color::<f64>::new_rgba(1.0, 0.0, 128.0 / 255.0, 200.0 / 255.0);
-        let expected = color.to_u8().to_bytes();
+        let expected: [u8; 4] = Color::<u8>::from(color).into();
         buf.fill_background(color);
         assert_eq!(buf.pixels(), &expected[..]);
     }
@@ -97,7 +98,7 @@ mod tests {
         // Simulate an undersized buffer: Size says 2x2 (16 bytes) but only 8 bytes present
         let mut buf = PixelBuffer::from_raw(vec![0u8; 8], Size::new(2, 2));
         let color = Color::<f64>::new(10.0 / 255.0, 20.0 / 255.0, 30.0 / 255.0);
-        let expected = color.to_u8().to_bytes();
+        let expected: [u8; 4] = Color::<u8>::from(color).into();
         buf.fill_background(color);
         // Only 2 pixels fit in 8 bytes
         assert_eq!(&buf.pixels()[..4], &expected);
@@ -120,7 +121,7 @@ mod tests {
     fn fill_background_preserves_color_via_u32_round_trip() {
         let mut buf = PixelBuffer::new(Size::new(2, 2));
         let color = Color::<f64>::new_rgba(0xAB as f64 / 255.0, 0xCD as f64 / 255.0, 0xEF as f64 / 255.0, 0x12 as f64 / 255.0);
-        let expected_bytes = color.to_u8().to_bytes();
+        let expected_bytes: [u8; 4] = Color::<u8>::from(color).into();
         buf.fill_background(color);
 
         let pixels_u32: &[u32] = bytemuck::cast_slice(buf.pixels());

@@ -10,14 +10,13 @@
 [![Book](https://github.com/smearor/pixel-drawing/actions/workflows/book.yml/badge.svg)](https://github.com/smearor/pixel-drawing/actions/workflows/book.yml)
 
 A Rust library for software rendering onto raw RGBA pixel buffers. It provides
-color types, glyph rasterization, Nerd Font icon rendering, text layout,
-progress bars, and a builder-pattern render context — all without requiring a
-windowing system or GPU.
+glyph rasterization, Nerd Font icon rendering, text layout, progress bars,
+and a builder-pattern render context — all without requiring a windowing
+system or GPU. Colors use the generic `Color<T>` type from
+`smearor-commons-color` (`Color<f64>` normalized, `Color<u8>` pixel-native).
 
 ## Features
 
-- **Color Types** — Generic `Color<T>` with `Color<f64>` and `Color<u8>`,
-  hex parsing, and conversions
 - **Pixel Operations** — `fill_background`, `blend_pixel`, and bitmap text
   fallback
 - **Glyph Rendering** — Single-glyph rasterization with alpha blending using
@@ -48,10 +47,10 @@ nerd-fonts-gtk = { path = "../nerd-fonts-gtk", default-features = false, feature
 ### Usage
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::render_context::RenderContext;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 // PixelBuffer methods
 let mut buf = PixelBuffer::new(Size::new(96, 96));

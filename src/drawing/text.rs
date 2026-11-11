@@ -5,7 +5,6 @@
 
 use super::glyph::truncate_text_to_width;
 use super::progress::default_text_color;
-use crate::color::Color;
 use crate::pixel_buffer::PixelBuffer;
 use ab_glyph::Font;
 use ab_glyph::Glyph;
@@ -13,6 +12,7 @@ use ab_glyph::PxScale;
 use ab_glyph::ScaleFont;
 use nerd_fonts_rs::fonts::label_font;
 use nerd_fonts_rs::fonts::nerd_font;
+use smearor_commons_color::Color;
 use tracing::debug;
 
 impl PixelBuffer {

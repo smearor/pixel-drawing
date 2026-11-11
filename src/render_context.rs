@@ -5,9 +5,9 @@
 //! [`crate::PixelBuffer`]. This eliminates the boilerplate of passing `pixels`,
 //! `width`, `height`, and colors to every `draw_*` call.
 
-use crate::color::Color;
 use crate::pixel_buffer::PixelBuffer;
 use crate::size::Size;
+use smearor_commons_color::Color;
 
 /// Builder context for rendering Nerd Font icons, text, and UI elements
 /// onto a raw RGBA pixel buffer.
@@ -18,10 +18,10 @@ use crate::size::Size;
 /// # Examples
 ///
 /// ```no_run
-/// use pixel_drawing::Color;
 /// use pixel_drawing::PixelBuffer;
 /// use pixel_drawing::RenderContext;
 /// use pixel_drawing::Size;
+/// use smearor_commons_color::Color;
 ///
 /// let mut buf = PixelBuffer::new(Size::new(96, 96));
 /// let mut ctx = RenderContext::new(&mut buf)
@@ -175,7 +175,7 @@ mod tests {
         let size = Size::new(4, 4);
         let mut buf = PixelBuffer::new(size);
         let color = Color::<f64>::new(50.0 / 255.0, 60.0 / 255.0, 70.0 / 255.0);
-        let expected = color.to_u8().to_bytes();
+        let expected: [u8; 4] = Color::<u8>::from(color).into();
 
         let mut ctx = RenderContext::new(&mut buf).background(color);
         ctx.fill_background();

@@ -1049,6 +1049,7 @@ dependencies = [
  "gtk4",
  "miette",
  "nerd-fonts-rs",
+ "smearor-commons-color",
  "thiserror 2.0.21",
  "tracing",
 ]
@@ -1266,6 +1267,7 @@ checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 [[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
+source = "git+https://github.com/smearor/smearor-commons.git#b23bdcabdd76770d5679ca4b43992ab3f061f5ee"
 dependencies = [
  "serde",
  "thiserror 2.0.21",

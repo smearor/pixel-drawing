@@ -7,10 +7,10 @@ methods on `PixelBuffer`.
 ## Basic Usage
 
 ```rust
-use pixel_drawing::color::Color;
 use pixel_drawing::pixel_buffer::PixelBuffer;
 use pixel_drawing::render_context::RenderContext;
 use pixel_drawing::size::Size;
+use smearor_commons_color::Color;
 
 let mut buf = PixelBuffer::new(Size::new(96, 96));
 let mut ctx = RenderContext::new(&mut buf)
