@@ -1,0 +1,33 @@
+[package]
+name = "pixel-drawing"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+authors = ["Andreas Schaeffer <hanack@nooblounge.net>"]
+description = "Software rendering utilities for pixel buffers: color types, glyph rendering, text, icons, and progress bars"
+repository = "https://github.com/smearor/pixel-drawing"
+homepage = "https://github.com/smearor/pixel-drawing"
+readme = "README.md"
+keywords = ["rendering", "pixel", "color", "glyph", "drawing"]
+categories = ["graphics", "rendering"]
+
+[dependencies]
+nerd-fonts-rs = { path = "../nerd-fonts-gtk/crates/nerd-fonts-rs", default-features = false, features = ["render", "embed-fonts"] }
+ab_glyph = "0.2"
+ahash = "0.8"
+bytemuck = "1.23"
+tracing = "0.1"
+thiserror = "2.0"
+
+[dev-dependencies]
+gtk4 = "0.11"
+glib = "0.22"
+miette = "7.4"
+nerd-fonts-rs = { path = "../nerd-fonts-gtk/crates/nerd-fonts-rs", default-features = false, features = ["gtk"] }
+
+[[example]]
+name = "interactive_demo"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(is_lib)'] }
