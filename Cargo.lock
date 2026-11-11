@@ -364,6 +364,7 @@ dependencies = [
 [[package]]
 name = "fonts-rs-generator"
 version = "0.6.0"
+source = "git+https://github.com/smearor/fonts-rs.git#cf10dd9350fdc62572c15701b105fc1b824f1706"
 dependencies = [
  "font-types",
  "fonts-rs-model",
@@ -382,6 +383,7 @@ dependencies = [
 [[package]]
 name = "fonts-rs-model"
 version = "0.6.0"
+source = "git+https://github.com/smearor/fonts-rs.git#cf10dd9350fdc62572c15701b105fc1b824f1706"
 dependencies = [
  "ab_glyph",
  "base64",
@@ -852,6 +854,7 @@ dependencies = [
 [[package]]
 name = "nerd-fonts-generator"
 version = "0.6.0"
+source = "git+https://github.com/smearor/fonts-rs.git#cf10dd9350fdc62572c15701b105fc1b824f1706"
 dependencies = [
  "clap",
  "fonts-rs-generator",
@@ -869,6 +872,7 @@ dependencies = [
 [[package]]
 name = "nerd-fonts-model"
 version = "0.6.0"
+source = "git+https://github.com/smearor/fonts-rs.git#cf10dd9350fdc62572c15701b105fc1b824f1706"
 dependencies = [
  "const_format",
  "fonts-rs-model",
@@ -878,6 +882,7 @@ dependencies = [
 [[package]]
 name = "nerd-fonts-rs"
 version = "0.6.0"
+source = "git+https://github.com/smearor/fonts-rs.git#cf10dd9350fdc62572c15701b105fc1b824f1706"
 dependencies = [
  "ab_glyph",
  "const_format",

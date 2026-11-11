@@ -13,7 +13,7 @@ keywords = ["rendering", "pixel", "color", "glyph", "drawing"]
 categories = ["graphics", "rendering"]
 
 [dependencies]
-nerd-fonts-rs = { path = "../nerd-fonts-gtk/crates/nerd-fonts-rs", default-features = false, features = ["render", "embed-fonts"] }
+nerd-fonts-rs = { git = "https://github.com/smearor/fonts-rs.git", default-features = false, features = ["render", "embed-fonts"] }
 ab_glyph = "0.2"
 ahash = "0.8"
 bytemuck = "1.23"
@@ -25,7 +25,7 @@ smearor-commons-color = { git = "https://github.com/smearor/smearor-commons.git"
 gtk4 = "0.11"
 glib = "0.22"
 miette = "7.4"
-nerd-fonts-rs = { path = "../nerd-fonts-gtk/crates/nerd-fonts-rs", default-features = false, features = ["gtk"] }
+nerd-fonts-rs = { git = "https://github.com/smearor/fonts-rs.git", default-features = false, features = ["gtk"] }
 
 [[example]]
 name = "interactive_demo"
