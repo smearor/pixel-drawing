@@ -1,0 +1,12 @@
+[book]
+title = "pixel-drawing Documentation"
+authors = ["Andreas Schaeffer <hanack@nooblounge.net>"]
+language = "en"
+src = "src"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+git-repository-url = "https://github.com/smearor/pixel-drawing"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
