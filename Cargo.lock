@@ -1307,7 +1307,7 @@ checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 [[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#df2154151a8f427d6fdbebcc26da528889fa7809"
+source = "git+https://github.com/smearor/smearor-commons.git#f85ac26b02d7cf328e36f978feb5d10a83bcca67"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
