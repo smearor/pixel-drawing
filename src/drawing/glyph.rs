@@ -3,17 +3,10 @@
 //! Provides single-glyph rasterization with alpha blending, glyph-to-pixel
 //! scale computation (with caching), and text width truncation.
 
-use ab_glyph::Font;
 use ab_glyph::FontVec;
-use ab_glyph::Glyph;
 use ab_glyph::GlyphId;
-use ab_glyph::PxScale;
-use ab_glyph::PxScaleFont;
-use ab_glyph::ScaleFont;
 use ahash::AHashMap;
 use smearor_commons_geometry::Pixels;
-use smearor_commons_geometry::Rect;
-use smearor_commons_geometry::Vec2;
 use std::cell::RefCell;
 
 thread_local! {
@@ -23,14 +16,9 @@ thread_local! {
         RefCell::new(AHashMap::new());
 }
 
-/// Compute the em-scale needed so that a glyph's largest dimension (width or
-/// height) equals `target_px` pixels.
-///
-/// `PxScale::from(x)` sets the **em** size, not the glyph size. Nerd Font
-/// symbols typically occupy only a small fraction of the em square, so a
-/// 76px em can produce a ~12px glyph. This function probes the glyph at 1px
-/// em, measures its design-space bounds, and returns the em-scale that makes
-/// the glyph's largest dimension match `target_px`.
+/// [`smearor_commons_font::glyph_fit_scale`] behind a thread-local
+/// cache - avoids redundant glyph probing on repeated renders of the
+/// same icon. The cache policy lives here; the metric itself is generic.
 pub(super) fn glyph_fit_scale(font: &FontVec, glyph_id: GlyphId, target_px: Pixels<f32>) -> Pixels<f32> {
     let key = (glyph_id, target_px.as_raw().to_bits());
 
@@ -39,74 +27,20 @@ pub(super) fn glyph_fit_scale(font: &FontVec, glyph_id: GlyphId, target_px: Pixe
         return scale;
     }
 
-    let scale = glyph_fit_scale_uncached(font, glyph_id, target_px);
+    let scale = smearor_commons_font::glyph_fit_scale(font, glyph_id, target_px);
 
     GLYPH_SCALE_CACHE.with(|c| c.borrow_mut().insert(key, scale));
 
     scale
 }
 
-fn glyph_fit_scale_uncached(font: &FontVec, glyph_id: GlyphId, target_px: Pixels<f32>) -> Pixels<f32> {
-    // Probe at a large enough scale to get accurate pixel measurements.
-    // outline_glyph rounds to integer pixels, so scale=1.0 gives 0 or 1 px
-    // which is too imprecise. Use 100.0 em and scale the result.
-    let probe_scale = Pixels::new(100.0_f32);
-    let probe = glyph_id.with_scale(PxScale::from(probe_scale.as_raw()));
-    if let Some(outline) = font.outline_glyph(probe) {
-        let bounds: Rect<Pixels, f32> = outline.px_bounds().into();
-        let max_g = Pixels::new(bounds.size.x.max(bounds.size.y).max(0.0));
-        if max_g > Pixels::new(0.01) {
-            // max_g is the pixel size at probe_scale em.
-            // To get target_px pixels: em_scale = target_px * probe_scale / max_g
-            return Pixels::new(target_px.as_raw() * probe_scale.as_raw() / max_g.as_raw());
-        }
-    }
-    // Fallback: use glyph_bounds (design-space, not pixel-accurate)
-    let probe = glyph_id.with_scale(1.0);
-    let bounds: Rect<Pixels, f32> = font.glyph_bounds(&probe).into();
-    let max_g = Pixels::new(bounds.size.x.max(bounds.size.y).max(0.0));
-    if max_g > Pixels::new(0.01) {
-        Pixels::new(target_px.as_raw() / max_g.as_raw())
-    } else {
-        target_px
-    }
-}
-
-/// A glyph scaled to `scale` and positioned so that its pixel bounds
-/// center lands on `target` - outline `px_bounds` when available
-/// (precise for centering), `glyph_bounds` as fallback.
-pub(super) fn centered_glyph(font: &FontVec, glyph_id: GlyphId, scale: PxScale, target: Vec2<Pixels, f32>) -> Glyph {
-    let probe = glyph_id.with_scale(scale);
-    let bounds: Rect<Pixels, f32> = font
-        .outline_glyph(probe.clone())
-        .map(|outline| outline.px_bounds().into())
-        .unwrap_or_else(|| font.glyph_bounds(&probe).into());
-    glyph_id.with_scale_and_position(scale, target - bounds.center())
-}
-
-/// Truncate text to fit within a maximum pixel width.
-///
-/// Uses incremental width tracking — O(n) in the number of characters.
-pub(super) fn truncate_text_to_width(text: &str, scaled_font: &PxScaleFont<&FontVec>, max_width: Pixels<f32>) -> String {
-    let mut result = String::new();
-    let mut current_width = Pixels::new(0.0_f32);
-    for ch in text.chars() {
-        let glyph_id = scaled_font.glyph_id(ch);
-        let char_width = Pixels::new(scaled_font.h_advance(glyph_id));
-        if current_width + char_width > max_width {
-            break;
-        }
-        current_width = current_width + char_width;
-        result.push(ch);
-    }
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ab_glyph::Font;
     use ab_glyph::PxScale;
     use nerd_fonts_rs::fonts::nerd_font;
+    use smearor_commons_font::truncate_text_to_width;
 
     #[test]
     fn glyph_fit_scale_returns_consistent_results() {

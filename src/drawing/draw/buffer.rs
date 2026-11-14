@@ -3,9 +3,7 @@
 use super::ops::DrawOps;
 use crate::drawing::RasterOps;
 use crate::drawing::default_color::default_text_color;
-use crate::drawing::glyph::centered_glyph;
 use crate::drawing::glyph::glyph_fit_scale;
-use crate::drawing::glyph::truncate_text_to_width;
 use ab_glyph::Font;
 use ab_glyph::Glyph;
 use ab_glyph::PxScale;
@@ -17,6 +15,8 @@ use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_buffer::PixelFormat;
 use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_font::centered_glyph;
+use smearor_commons_font::truncate_text_to_width;
 use smearor_commons_geometry::Circle;
 use smearor_commons_geometry::Fraction;
 use smearor_commons_geometry::Grid;
@@ -32,20 +32,8 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
     /// SIMD-vectorized writes. Strided views fill each row's pixel bytes
     /// and leave row padding untouched.
     fn fill_background(&mut self, color: impl Into<Color<u8>>) {
-        let color: Color<u8> = color.into();
-        if self.is_packed() {
-            let len = self.metadata().required_len(Rgba::BYTES_PER_PIXEL);
-            let color_u32 = u32::from_le_bytes(color.into());
-            let pixels_u32: &mut [u32] = bytemuck::cast_slice_mut(&mut self.data_mut()[..len]);
-            pixels_u32.fill(color_u32);
-        } else {
-            let bytes: [u8; 4] = color.into();
-            for y in 0..self.height().as_raw() {
-                if let Some(row) = self.row_mut(Pixels::new(y)) {
-                    row.as_chunks_mut::<4>().0.fill(bytes);
-                }
-            }
-        }
+        let bytes: [u8; 4] = color.into().into();
+        self.fill(&bytes);
     }
 
     /// Draw a Nerd Font icon centered on the image, occupying the upper portion.
@@ -701,10 +689,9 @@ mod tests {
         let expected_bytes: [u8; 4] = Color::<u8>::from(color).into();
         buf.fill_background(color);
 
-        let pixels_u32: &[u32] = bytemuck::cast_slice(buf.pixels());
         let expected = u32::from_le_bytes(expected_bytes);
-        for &px in pixels_u32 {
-            assert_eq!(px, expected);
+        for &px in buf.pixels().as_chunks::<4>().0 {
+            assert_eq!(u32::from_le_bytes(px), expected);
         }
     }
 }

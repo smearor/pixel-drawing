@@ -16,11 +16,11 @@ categories = ["graphics", "rendering"]
 nerd-fonts-rs = { git = "https://github.com/smearor/fonts-rs.git", default-features = false, features = ["render", "embed-fonts"] }
 ab_glyph = "0.2"
 ahash = "0.8"
-bytemuck = "1.23"
 tracing = "0.1"
 thiserror = "2.0"
 smearor-commons-buffer = { git = "https://github.com/smearor/smearor-commons.git" }
 smearor-commons-color = { git = "https://github.com/smearor/smearor-commons.git" }
+smearor-commons-font = { git = "https://github.com/smearor/smearor-commons.git" }
 smearor-commons-geometry = { git = "https://github.com/smearor/smearor-commons.git", features = ["ab_glyph"] }
 
 [dev-dependencies]
