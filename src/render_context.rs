@@ -10,6 +10,7 @@ use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
 use smearor_commons_geometry::Fraction;
+use smearor_commons_geometry::Grid;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
@@ -153,8 +154,8 @@ impl<'a> RenderContext<'a> {
     /// resolver function.
     ///
     /// Uses the configured `is_active` state for default color selection.
-    pub fn draw_icon_grid(&mut self, icons: &[&str], grid_cols: u32, resolve_codepoint: impl Fn(&str) -> Option<char>) {
-        self.buf.draw_icon_grid(icons, grid_cols, self.is_active, resolve_codepoint);
+    pub fn draw_icon_grid(&mut self, icons: &[&str], grid: Grid, resolve_codepoint: impl Fn(&str) -> Option<char>) {
+        self.buf.draw_icon_grid(icons, grid, self.is_active, resolve_codepoint);
     }
 
     /// Returns the buffer width in pixels.

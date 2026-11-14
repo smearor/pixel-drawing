@@ -2,6 +2,7 @@
 
 use smearor_commons_color::Color;
 use smearor_commons_geometry::Fraction;
+use smearor_commons_geometry::Grid;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Vec2;
 
@@ -22,7 +23,7 @@ pub trait DrawOps {
     /// Draw a Nerd Font icon by Unicode codepoint at a custom position and size.
     fn draw_nerd_font_codepoint(&mut self, codepoint: char, center: Vec2<Pixels, f32>, icon_size: Pixels<f32>, color: impl Into<Color<u8>>);
     /// Draw a 2x2 or 3x3 icon grid within the view area.
-    fn draw_icon_grid(&mut self, icons: &[&str], grid_cols: u32, is_active: bool, resolve_codepoint: impl Fn(&str) -> Option<char>);
+    fn draw_icon_grid(&mut self, icons: &[&str], grid: Grid, is_active: bool, resolve_codepoint: impl Fn(&str) -> Option<char>);
     /// Draw a text label at the bottom of the view using the label font.
     fn draw_label_text(&mut self, text: &str, is_active: bool, text_color_override: Option<Color<f64>>);
     /// Draw text centered horizontally at a given y-baseline.

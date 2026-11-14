@@ -22,6 +22,7 @@ use pixel_drawing::render_context::RenderContext;
 use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_color::Color;
 use smearor_commons_geometry::Fraction;
+use smearor_commons_geometry::Grid;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
@@ -328,7 +329,7 @@ fn build_icon_grid_section() -> Frame {
     let size = Size::new(192, 192);
     let mut buf = PixelBuffer::new(size);
     buf.fill_background(Color::<f64>::new(20.0 / 255.0, 20.0 / 255.0, 25.0 / 255.0));
-    buf.draw_icon_grid(GALLERY_ICONS, 2, true, resolve_codepoint);
+    buf.draw_icon_grid(GALLERY_ICONS, Grid::for_items(GALLERY_ICONS.len() as u32, 2), true, resolve_codepoint);
 
     let texture = pixels_to_texture(&buf);
     let image = make_image(&texture, size.x);

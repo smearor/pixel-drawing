@@ -19,8 +19,8 @@ use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
 use smearor_commons_geometry::Circle;
 use smearor_commons_geometry::Fraction;
+use smearor_commons_geometry::Grid;
 use smearor_commons_geometry::Pixels;
-use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::Vec2;
 use tracing::debug;
 
@@ -126,15 +126,14 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
     }
 
     /// Draw a 2x2 or 3x3 icon grid within the image area.
-    fn draw_icon_grid(&mut self, icons: &[&str], grid_cols: u32, is_active: bool, resolve_codepoint: impl Fn(&str) -> Option<char>) {
+    fn draw_icon_grid(&mut self, icons: &[&str], grid: Grid, is_active: bool, resolve_codepoint: impl Fn(&str) -> Option<char>) {
         let size = self.size();
         let font = match nerd_font() {
             Some(f) => f,
             None => return,
         };
 
-        let rows = (icons.len() as u32).div_ceil(grid_cols).max(1);
-        let cell_size = Vec2::new(size.x / grid_cols, size.y / rows);
+        let cell_size = grid.cell_size(size);
         let icon_size = Pixels::new(cell_size.x.min(cell_size.y) as f32 * 0.6);
         let color = default_text_color(is_active);
 
@@ -144,9 +143,10 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
                 None => continue,
             };
 
-            let col = (i as u32) % grid_cols;
-            let row = (i as u32) / grid_cols;
-            let cell = Rect::<(), u32>::new(Vec2::new(col * cell_size.x, row * cell_size.y), cell_size);
+            let Some(cell_pos) = grid.cell(i as u32) else {
+                continue;
+            };
+            let cell = grid.rect(cell_pos, size);
 
             let glyph_id = font.glyph_id(codepoint);
             let em_scale = glyph_fit_scale(font, glyph_id, icon_size);
@@ -279,8 +279,8 @@ impl DrawOps for PixelBuffer<Rgba> {
         self.view_mut().draw_nerd_font_codepoint(codepoint, center, icon_size, color);
     }
 
-    fn draw_icon_grid(&mut self, icons: &[&str], grid_cols: u32, is_active: bool, resolve_codepoint: impl Fn(&str) -> Option<char>) {
-        self.view_mut().draw_icon_grid(icons, grid_cols, is_active, resolve_codepoint);
+    fn draw_icon_grid(&mut self, icons: &[&str], grid: Grid, is_active: bool, resolve_codepoint: impl Fn(&str) -> Option<char>) {
+        self.view_mut().draw_icon_grid(icons, grid, is_active, resolve_codepoint);
     }
 
     fn draw_label_text(&mut self, text: &str, is_active: bool, text_color_override: Option<Color<f64>>) {
@@ -426,7 +426,7 @@ mod tests {
         let size = Size::new(96, 96);
         let mut buf = PixelBuffer::new(size);
         let icons = ["nf-fa-gamepad", "nf-fa-star", "nf-fa-heart", "nf-fa-bug"];
-        buf.draw_icon_grid(&icons, 2, true, resolve_codepoint);
+        buf.draw_icon_grid(&icons, Grid::for_items(icons.len() as u32, 2), true, resolve_codepoint);
 
         let non_zero = buf.pixels().as_chunks::<4>().0.iter().filter(|px| px.iter().any(|&b| b != 0)).count();
         assert!(non_zero > 0, "at least some pixels should be rendered for icon grid");
@@ -437,7 +437,7 @@ mod tests {
         let size = Size::new(32, 32);
         let mut buf = PixelBuffer::new(size);
         let icons: [&str; 0] = [];
-        buf.draw_icon_grid(&icons, 2, false, resolve_codepoint);
+        buf.draw_icon_grid(&icons, Grid::for_items(icons.len() as u32, 2), false, resolve_codepoint);
 
         assert!(buf.pixels().iter().all(|&p| p == 0), "no pixels should be rendered for empty icon list");
     }
@@ -447,7 +447,7 @@ mod tests {
         let size = Size::new(64, 64);
         let mut buf = PixelBuffer::new(size);
         let icons = ["nf-xx-nonexistent", "nf-yy-also-nonexistent"];
-        buf.draw_icon_grid(&icons, 2, false, resolve_codepoint);
+        buf.draw_icon_grid(&icons, Grid::for_items(icons.len() as u32, 2), false, resolve_codepoint);
 
         assert!(buf.pixels().iter().all(|&p| p == 0), "no pixels should be rendered when all icons are unknown");
     }
