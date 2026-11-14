@@ -1,6 +1,7 @@
 //! The [`DrawOps`] extension trait.
 
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Fraction;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Vec2;
 
@@ -27,5 +28,5 @@ pub trait DrawOps {
     /// Draw text centered horizontally at a given y-baseline.
     fn draw_text_centered(&mut self, text: &str, baseline_y: Pixels<f32>, font_size: Pixels<f32>, color: impl Into<Color<u8>>);
     /// Draw a horizontal progress bar at the bottom of the view.
-    fn draw_progress_bar(&mut self, value: f32, color: impl Into<Color<u8>>);
+    fn draw_progress_bar(&mut self, value: Fraction, color: impl Into<Color<u8>>);
 }

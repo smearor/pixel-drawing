@@ -21,6 +21,7 @@ use pixel_drawing::DrawOps;
 use pixel_drawing::render_context::RenderContext;
 use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Fraction;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
@@ -366,14 +367,14 @@ fn build_progress_bar_section() -> Frame {
 
     let progress_size = Size::new(256, 32);
 
-    let render_progress = move |value: f32| -> gtk4::gdk::MemoryTexture {
+    let render_progress = move |value: Fraction| -> gtk4::gdk::MemoryTexture {
         let mut buf = PixelBuffer::new(progress_size);
         buf.fill_background(Color::<f64>::new(20.0 / 255.0, 20.0 / 255.0, 20.0 / 255.0));
         buf.draw_progress_bar(value, Color::<f64>::new(0.4, 0.7, 1.0));
         pixels_to_texture(&buf)
     };
 
-    let progress_texture = render_progress(0.65);
+    let progress_texture = render_progress(Fraction::new(0.65));
     let progress_image = Image::from_paintable(Some(&progress_texture));
     progress_image.set_halign(Align::Center);
     progress_image.set_pixel_size(progress_size.x as i32);
@@ -391,7 +392,7 @@ fn build_progress_bar_section() -> Frame {
         #[weak]
         progress_image,
         move |slider| {
-            let texture = render_progress(slider.value() as f32);
+            let texture = render_progress(Fraction::new(slider.value()));
             progress_image.set_paintable(Some(&texture));
         }
     ));

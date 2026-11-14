@@ -9,6 +9,7 @@ use crate::drawing::DrawOps;
 use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Fraction;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
 use smearor_commons_geometry::Vec2;
@@ -24,7 +25,7 @@ use smearor_commons_geometry::Vec2;
 /// ```no_run
 /// use smearor_commons_buffer::PixelBuffer;
 /// use pixel_drawing::RenderContext;
-/// use smearor_commons_geometry::Pixels;
+/// use smearor_commons_geometry::Fraction;
 /// use smearor_commons_geometry::Size;
 /// use smearor_commons_color::Color;
 ///
@@ -104,8 +105,9 @@ impl<'a> RenderContext<'a> {
     pub fn draw_icon(&mut self, codepoint: char) {
         let size = self.buf.size();
         let icon_size = Pixels::new(size.x.min(size.y) as f32 * 0.6);
+        let size_f = size.to_f32();
         self.buf
-            .draw_nerd_font_codepoint(codepoint, Vec2::<Pixels, f32>::new(size.x as f32 / 2.0, size.y as f32 * 0.4), icon_size, self.icon_color);
+            .draw_nerd_font_codepoint(codepoint, Vec2::<Pixels, f32>::new(size_f.half().x, size_f.y * 0.4), icon_size, self.icon_color);
     }
 
     /// Draws a Nerd Font icon by name, resolving the codepoint via the
@@ -143,7 +145,7 @@ impl<'a> RenderContext<'a> {
     /// Draws a horizontal progress bar at the bottom of the buffer.
     ///
     /// `value` is clamped to `[0.0, 1.0]`. Uses the configured `icon_color`.
-    pub fn draw_progress_bar(&mut self, value: f32) {
+    pub fn draw_progress_bar(&mut self, value: Fraction) {
         self.buf.draw_progress_bar(value, self.icon_color);
     }
 

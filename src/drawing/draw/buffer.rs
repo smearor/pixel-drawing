@@ -14,9 +14,13 @@ use nerd_fonts_rs::fonts::label_font;
 use nerd_fonts_rs::fonts::nerd_font;
 use smearor_commons_buffer::BufferViewMut;
 use smearor_commons_buffer::PixelBuffer;
+use smearor_commons_buffer::PixelFormat;
 use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Circle;
+use smearor_commons_geometry::Fraction;
 use smearor_commons_geometry::Pixels;
+use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::Vec2;
 use tracing::debug;
 
@@ -30,7 +34,7 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
     fn fill_background(&mut self, color: impl Into<Color<u8>>) {
         let color: Color<u8> = color.into();
         if self.is_packed() {
-            let len = self.metadata().required_len(4);
+            let len = self.metadata().required_len(Rgba::BYTES_PER_PIXEL);
             let color_u32 = u32::from_le_bytes(color.into());
             let pixels_u32: &mut [u32] = bytemuck::cast_slice_mut(&mut self.data_mut()[..len]);
             pixels_u32.fill(color_u32);
@@ -77,7 +81,8 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
         let scale = PxScale::from(em_scale.as_raw());
 
         // Center the glyph bounds in the upper portion of the buffer
-        let target = Vec2::<Pixels, f32>::new(size.x as f32 / 2.0, size.y as f32 * 0.4);
+        let size_f = size.to_f32();
+        let target = Vec2::<Pixels, f32>::new(size_f.half().x, size_f.y * 0.4);
         let glyph = centered_glyph(font, glyph_id, scale, target);
         self.draw_glyph(font, &glyph, color);
     }
@@ -87,23 +92,18 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
         let size = self.size();
         let stride = self.stride().as_usize();
         let pixels = self.data_mut();
-        let center_x = size.x / 2;
-        let center_y = size.x / 2;
-        let radius = (size.x.min(size.y) / 3).max(8);
+        let size_f = size.to_f64();
+        let cx = size_f.half().x;
+        let center = Vec2::<Pixels>::new(cx, cx - size_f.y / 6.0);
+        let circle = Circle::<Pixels>::new(center, (size.x.min(size.y) / 3).max(8) as f64);
         let color: Color<u8> = icon_color.map(|c| c.into()).unwrap_or_else(|| default_text_color(is_active));
         let bytes: [u8; 4] = color.into();
 
-        let cx = center_x as i32;
-        let cy = (center_y as i32) - (size.y as i32 / 6);
-        let r = radius as i32;
-
         for y in 0..size.y as i32 {
             for x in 0..size.x as i32 {
-                let dx = x - cx;
-                let dy = y - cy;
-                if dx * dx + dy * dy <= r * r {
-                    let idx = y as usize * stride + x as usize * 4;
-                    pixels[idx..idx + 4].copy_from_slice(&bytes);
+                if circle.contains(&Vec2::<Pixels>::new(x as f64, y as f64)) {
+                    let idx = y as usize * stride + x as usize * Rgba::BYTES_PER_PIXEL;
+                    pixels[idx..idx + Rgba::BYTES_PER_PIXEL].copy_from_slice(&bytes);
                 }
             }
         }
@@ -134,9 +134,8 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
         };
 
         let rows = (icons.len() as u32).div_ceil(grid_cols).max(1);
-        let cell_w = size.x / grid_cols;
-        let cell_h = size.y / rows;
-        let icon_size = Pixels::new(cell_w.min(cell_h) as f32 * 0.6);
+        let cell_size = Vec2::new(size.x / grid_cols, size.y / rows);
+        let icon_size = Pixels::new(cell_size.x.min(cell_size.y) as f32 * 0.6);
         let color = default_text_color(is_active);
 
         for (i, icon_name) in icons.iter().enumerate() {
@@ -147,15 +146,14 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
 
             let col = (i as u32) % grid_cols;
             let row = (i as u32) / grid_cols;
-            let cx = col * cell_w + cell_w / 2;
-            let cy = row * cell_h + cell_h / 2;
+            let cell = Rect::<(), u32>::new(Vec2::new(col * cell_size.x, row * cell_size.y), cell_size);
 
             let glyph_id = font.glyph_id(codepoint);
             let em_scale = glyph_fit_scale(font, glyph_id, icon_size);
             let scale = PxScale::from(em_scale.as_raw());
 
             // Center the glyph bounds in its cell
-            let glyph = centered_glyph(font, glyph_id, scale, Vec2::<Pixels, f32>::new(cx as f32, cy as f32));
+            let glyph = centered_glyph(font, glyph_id, scale, cell.center().to_f32().with_unit());
             self.draw_glyph(font, &glyph, color);
         }
     }
@@ -240,23 +238,23 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
     }
 
     /// Draw a horizontal progress bar at the bottom of the image.
-    fn draw_progress_bar(&mut self, value: f32, color: impl Into<Color<u8>>) {
+    fn draw_progress_bar(&mut self, value: Fraction, color: impl Into<Color<u8>>) {
         let size = self.size();
         let stride = self.stride().as_usize();
         let pixels = self.data_mut();
         let bar_height = 4u32;
         let color: Color<u8> = color.into();
         let bar_y = size.y.saturating_sub(bar_height + 2);
-        let fill_width = ((size.x as f32 * value.clamp(0.0, 1.0)) as u32).min(size.x);
+        let fill_width = ((size.x as f64 * value.clamped().as_f64()) as u32).min(size.x);
         let bytes: [u8; 4] = color.into();
 
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = y as usize * stride + x as usize * 4;
+                let idx = y as usize * stride + x as usize * Rgba::BYTES_PER_PIXEL;
                 if x < fill_width {
-                    pixels[idx..idx + 4].copy_from_slice(&bytes);
+                    pixels[idx..idx + Rgba::BYTES_PER_PIXEL].copy_from_slice(&bytes);
                 } else {
-                    pixels[idx..idx + 4].copy_from_slice(&[bytes[0] / 3, bytes[1] / 3, bytes[2] / 3, 255]);
+                    pixels[idx..idx + Rgba::BYTES_PER_PIXEL].copy_from_slice(&[bytes[0] / 3, bytes[1] / 3, bytes[2] / 3, 255]);
                 }
             }
         }
@@ -293,7 +291,7 @@ impl DrawOps for PixelBuffer<Rgba> {
         self.view_mut().draw_text_centered(text, baseline_y, font_size, color);
     }
 
-    fn draw_progress_bar(&mut self, value: f32, color: impl Into<Color<u8>>) {
+    fn draw_progress_bar(&mut self, value: Fraction, color: impl Into<Color<u8>>) {
         self.view_mut().draw_progress_bar(value, color);
     }
 }
@@ -323,12 +321,16 @@ mod tests {
         let center_y = size.x / 2;
         let cx = center_x as i32;
         let cy = (center_y as i32) - (size.y as i32 / 6);
-        let idx = (cy as u32 * size.x + cx as u32) as usize * 4;
-        assert_eq!(&buf.pixels()[idx..idx + 4], &bytes, "center pixel should be filled by placeholder circle");
+        let idx = (cy as u32 * size.x + cx as u32) as usize * Rgba::BYTES_PER_PIXEL;
+        assert_eq!(&buf.pixels()[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "center pixel should be filled by placeholder circle");
 
         let dx = (size.x.min(size.y) / 3).max(8) as i32 + 2;
-        let outside_idx = (cy as u32 * size.x + (cx + dx) as u32) as usize * 4;
-        assert_eq!(&buf.pixels()[outside_idx..outside_idx + 4], &[0, 0, 0, 0], "pixel outside circle should be untouched");
+        let outside_idx = (cy as u32 * size.x + (cx + dx) as u32) as usize * Rgba::BYTES_PER_PIXEL;
+        assert_eq!(
+            &buf.pixels()[outside_idx..outside_idx + Rgba::BYTES_PER_PIXEL],
+            &[0, 0, 0, 0],
+            "pixel outside circle should be untouched"
+        );
     }
 
     #[test]
@@ -343,8 +345,8 @@ mod tests {
         let center_y = size.x / 2;
         let cx = center_x as i32;
         let cy = (center_y as i32) - (size.y as i32 / 6);
-        let idx = (cy as u32 * size.x + cx as u32) as usize * 4;
-        assert_eq!(&buf.pixels()[idx..idx + 4], &bytes, "center pixel should use active color");
+        let idx = (cy as u32 * size.x + cx as u32) as usize * Rgba::BYTES_PER_PIXEL;
+        assert_eq!(&buf.pixels()[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "center pixel should use active color");
     }
 
     #[test]
@@ -391,8 +393,8 @@ mod tests {
         let center_y = size.x / 2;
         let cx = center_x as i32;
         let cy = (center_y as i32) - (size.y as i32 / 6);
-        let idx = (cy as u32 * size.x + cx as u32) as usize * 4;
-        assert_eq!(&buf.pixels()[idx..idx + 4], &bytes, "placeholder should be drawn for unknown icon name");
+        let idx = (cy as u32 * size.x + cx as u32) as usize * Rgba::BYTES_PER_PIXEL;
+        assert_eq!(&buf.pixels()[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "placeholder should be drawn for unknown icon name");
     }
 
     #[test]
@@ -405,8 +407,8 @@ mod tests {
         let bytes: [u8; 4] = Color::<u8>::from(red).into();
         let cx = (size.x / 2) as i32;
         let cy = (size.x / 2) as i32 - (size.y as i32 / 6);
-        let idx = (cy as u32 * size.x + cx as u32) as usize * 4;
-        assert_eq!(&buf.pixels()[idx..idx + 4], &bytes, "placeholder should honor the icon color override");
+        let idx = (cy as u32 * size.x + cx as u32) as usize * Rgba::BYTES_PER_PIXEL;
+        assert_eq!(&buf.pixels()[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "placeholder should honor the icon color override");
     }
 
     #[test]
@@ -529,7 +531,7 @@ mod tests {
         let size = Size::new(8, 8);
         let mut buf = PixelBuffer::new(size);
         let color = Color::<u8>::new(255, 0, 0);
-        buf.draw_progress_bar(1.0, color);
+        buf.draw_progress_bar(Fraction::new(1.0), color);
 
         let bar_height = 4u32;
         let bar_y = size.y.saturating_sub(bar_height + 2);
@@ -537,8 +539,8 @@ mod tests {
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = (y * size.x + x) as usize * 4;
-                assert_eq!(&pixels[idx..idx + 4], &bytes, "pixel at ({},{}) should be fully filled", x, y);
+                let idx = (y * size.x + x) as usize * Rgba::BYTES_PER_PIXEL;
+                assert_eq!(&pixels[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "pixel at ({},{}) should be fully filled", x, y);
             }
         }
     }
@@ -548,7 +550,7 @@ mod tests {
         let size = Size::new(8, 8);
         let mut buf = PixelBuffer::new(size);
         let color = Color::<u8>::new(255, 0, 0);
-        buf.draw_progress_bar(0.5, color);
+        buf.draw_progress_bar(Fraction::new(0.5), color);
 
         let bar_height = 4u32;
         let bar_y = size.y.saturating_sub(bar_height + 2);
@@ -557,9 +559,9 @@ mod tests {
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = (y * size.x + x) as usize * 4;
+                let idx = (y * size.x + x) as usize * Rgba::BYTES_PER_PIXEL;
                 if x < fill_width {
-                    assert_eq!(&pixels[idx..idx + 4], &bytes, "pixel at ({},{}) should be filled", x, y);
+                    assert_eq!(&pixels[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "pixel at ({},{}) should be filled", x, y);
                 } else {
                     assert_eq!(pixels[idx], bytes[0] / 3, "pixel at ({},{}) should be dimmed", x, y);
                     assert_eq!(pixels[idx + 3], 255, "pixel at ({},{}) should be opaque", x, y);
@@ -573,7 +575,7 @@ mod tests {
         let size = Size::new(4, 8);
         let mut buf = PixelBuffer::new(size);
         let color = Color::<u8>::new(100, 200, 50);
-        buf.draw_progress_bar(0.0, color);
+        buf.draw_progress_bar(Fraction::new(0.0), color);
 
         let bar_height = 4u32;
         let bar_y = size.y.saturating_sub(bar_height + 2);
@@ -581,7 +583,7 @@ mod tests {
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = (y * size.x + x) as usize * 4;
+                let idx = (y * size.x + x) as usize * Rgba::BYTES_PER_PIXEL;
                 assert_eq!(pixels[idx], bytes[0] / 3, "pixel at ({},{}) should be dimmed", x, y);
                 assert_eq!(pixels[idx + 3], 255, "pixel at ({},{}) should be opaque", x, y);
             }
@@ -593,7 +595,7 @@ mod tests {
         let size = Size::new(4, 8);
         let mut buf = PixelBuffer::new(size);
         let color = Color::<u8>::new(255, 255, 255);
-        buf.draw_progress_bar(2.0, color);
+        buf.draw_progress_bar(Fraction::new(2.0), color);
 
         let bar_height = 4u32;
         let bar_y = size.y.saturating_sub(bar_height + 2);
@@ -601,8 +603,8 @@ mod tests {
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = (y * size.x + x) as usize * 4;
-                assert_eq!(&pixels[idx..idx + 4], &bytes, "pixel at ({},{}) should be fully filled (clamped)", x, y);
+                let idx = (y * size.x + x) as usize * Rgba::BYTES_PER_PIXEL;
+                assert_eq!(&pixels[idx..idx + Rgba::BYTES_PER_PIXEL], &bytes, "pixel at ({},{}) should be fully filled (clamped)", x, y);
             }
         }
     }
@@ -612,14 +614,14 @@ mod tests {
         let size = Size::new(4, 8);
         let mut buf = PixelBuffer::new(size);
         let color = Color::<u8>::new(255, 255, 255);
-        buf.draw_progress_bar(-1.0, color);
+        buf.draw_progress_bar(Fraction::new(-1.0), color);
 
         let bar_height = 4u32;
         let bar_y = size.y.saturating_sub(bar_height + 2);
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = (y * size.x + x) as usize * 4;
+                let idx = (y * size.x + x) as usize * Rgba::BYTES_PER_PIXEL;
                 assert_eq!(pixels[idx + 3], 255, "pixel at ({},{}) should be opaque", x, y);
             }
         }
@@ -630,7 +632,7 @@ mod tests {
         let size = Size::new(4, 8);
         let mut buf = PixelBuffer::new(size);
         let color_f64 = Color::<f64>::new(1.0, 0.0, 0.0);
-        buf.draw_progress_bar(1.0, color_f64);
+        buf.draw_progress_bar(Fraction::new(1.0), color_f64);
 
         let bar_height = 4u32;
         let bar_y = size.y.saturating_sub(bar_height + 2);
@@ -638,8 +640,14 @@ mod tests {
         let pixels = buf.pixels();
         for y in bar_y..bar_y + bar_height {
             for x in 0..size.x {
-                let idx = (y * size.x + x) as usize * 4;
-                assert_eq!(&pixels[idx..idx + 4], &expected, "pixel at ({},{}) should match f64-converted color", x, y);
+                let idx = (y * size.x + x) as usize * Rgba::BYTES_PER_PIXEL;
+                assert_eq!(
+                    &pixels[idx..idx + Rgba::BYTES_PER_PIXEL],
+                    &expected,
+                    "pixel at ({},{}) should match f64-converted color",
+                    x,
+                    y
+                );
             }
         }
     }
