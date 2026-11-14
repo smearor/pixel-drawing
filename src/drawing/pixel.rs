@@ -10,16 +10,16 @@ use smearor_commons_color::Color;
 use smearor_commons_geometry::Pixels;
 
 /// Alpha-blend a source color over an existing pixel.
-pub(super) fn blend_pixel(dst: &[u8], src: &[u8; 4], alpha: u8) -> [u8; 4] {
+pub(super) fn blend_pixel(dst: &[u8], src: &Color<u8>, alpha: u8) -> [u8; 4] {
     let src_alpha = alpha as f32 / 255.0;
     let dst_alpha = dst[3] as f32 / 255.0;
     let out_alpha = src_alpha + dst_alpha * (1.0 - src_alpha);
     if out_alpha < 0.001 {
         return [0, 0, 0, 0];
     }
-    let r = (src[0] as f32 * src_alpha + dst[0] as f32 * dst_alpha * (1.0 - src_alpha)) / out_alpha;
-    let g = (src[1] as f32 * src_alpha + dst[1] as f32 * dst_alpha * (1.0 - src_alpha)) / out_alpha;
-    let b = (src[2] as f32 * src_alpha + dst[2] as f32 * dst_alpha * (1.0 - src_alpha)) / out_alpha;
+    let r = (src.r as f32 * src_alpha + dst[0] as f32 * dst_alpha * (1.0 - src_alpha)) / out_alpha;
+    let g = (src.g as f32 * src_alpha + dst[1] as f32 * dst_alpha * (1.0 - src_alpha)) / out_alpha;
+    let b = (src.b as f32 * src_alpha + dst[2] as f32 * dst_alpha * (1.0 - src_alpha)) / out_alpha;
     [r.round() as u8, g.round() as u8, b.round() as u8, (out_alpha * 255.0).round() as u8]
 }
 
@@ -76,6 +76,7 @@ pub(super) fn fill_background(view: &mut BufferViewMut<Rgba>, color: impl Into<C
 mod tests {
     use super::*;
     use crate::DrawOps;
+    use crate::drawing::RasterOps;
     use smearor_commons_buffer::BufferMetadata;
     use smearor_commons_buffer::PixelBuffer;
     use smearor_commons_buffer::Stride;
@@ -140,7 +141,7 @@ mod tests {
     #[test]
     fn blend_pixel_full_opacity_overwrites_dst() {
         let dst = [10, 20, 30, 255];
-        let src = [255, 0, 0, 255];
+        let src = Color::<u8>::new_rgba(255, 0, 0, 255);
         let result = blend_pixel(&dst, &src, 255);
         assert_eq!(result, [255, 0, 0, 255]);
     }
@@ -148,7 +149,7 @@ mod tests {
     #[test]
     fn blend_pixel_half_alpha_blends() {
         let dst = [0, 0, 0, 255];
-        let src = [255, 255, 255, 255];
+        let src = Color::<u8>::new_rgba(255, 255, 255, 255);
         let result = blend_pixel(&dst, &src, 128);
         assert_eq!(result[3], 255, "output alpha should be fully opaque");
         assert!(result[0] > 0 && result[0] < 255, "red should be blended");
@@ -157,7 +158,7 @@ mod tests {
     #[test]
     fn blend_pixel_over_transparent_dst() {
         let dst = [0, 0, 0, 0];
-        let src = [100, 200, 50, 255];
+        let src = Color::<u8>::new_rgba(100, 200, 50, 255);
         let result = blend_pixel(&dst, &src, 255);
         assert_eq!(result, [100, 200, 50, 255]);
     }
@@ -165,7 +166,7 @@ mod tests {
     #[test]
     fn draw_text_bitmap_renders_pixels() {
         let mut buf = PixelBuffer::new(Size::new(64, 16));
-        draw_text_bitmap(&mut buf.view_mut(), "AB", false);
+        buf.view_mut().draw_text_bitmap("AB", false);
 
         let non_zero = buf.pixels().as_chunks::<4>().0.iter().filter(|px| px.iter().any(|&b| b != 0)).count();
         assert!(non_zero > 0, "bitmap text should render some pixels");
@@ -174,7 +175,7 @@ mod tests {
     #[test]
     fn draw_text_bitmap_empty_string_does_not_render() {
         let mut buf = PixelBuffer::new(Size::new(32, 16));
-        draw_text_bitmap(&mut buf.view_mut(), "", false);
+        buf.view_mut().draw_text_bitmap("", false);
 
         assert!(buf.pixels().iter().all(|&p| p == 0), "no pixels should be rendered for empty string");
     }

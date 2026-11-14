@@ -3,9 +3,8 @@
 //! Provides functions to draw text labels and centered text onto raw RGBA
 //! pixel buffers using `ab_glyph`, with font fallback chains.
 
-use super::glyph::draw_glyph;
+use super::RasterOps;
 use super::glyph::truncate_text_to_width;
-use super::pixel::draw_text_bitmap;
 use super::progress::default_text_color;
 use ab_glyph::Font;
 use ab_glyph::Glyph;
@@ -32,7 +31,7 @@ pub(super) fn draw_label_text(view: &mut BufferViewMut<Rgba>, text: &str, is_act
                 Some(f) => f,
                 None => {
                     debug!("nerd-fonts-gtk: no font available for label, using bitmap fallback");
-                    draw_text_bitmap(view, text, is_active);
+                    view.draw_text_bitmap(text, is_active);
                     return;
                 }
             }
@@ -59,7 +58,7 @@ pub(super) fn draw_label_text(view: &mut BufferViewMut<Rgba>, text: &str, is_act
     for ch in truncated.chars() {
         let glyph_id = font.glyph_id(ch);
         let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pen_x, baseline));
-        draw_glyph(view, font, &glyph, color);
+        view.draw_glyph(font, &glyph, color);
         pen_x += scaled_font.h_advance(glyph_id);
     }
 }
@@ -70,7 +69,7 @@ pub(super) fn draw_text_centered(view: &mut BufferViewMut<Rgba>, text: &str, bas
     let font = match label_font().or_else(nerd_font) {
         Some(f) => f,
         None => {
-            draw_text_bitmap(view, text, false);
+            view.draw_text_bitmap(text, false);
             return;
         }
     };
@@ -92,7 +91,7 @@ pub(super) fn draw_text_centered(view: &mut BufferViewMut<Rgba>, text: &str, bas
     for ch in truncated.chars() {
         let glyph_id = font.glyph_id(ch);
         let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pen_x, baseline_y));
-        draw_glyph(view, font, &glyph, color);
+        view.draw_glyph(font, &glyph, color);
         pen_x += scaled_font.h_advance(glyph_id);
     }
 }

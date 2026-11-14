@@ -11,6 +11,8 @@ mod pixel;
 mod progress;
 mod text;
 
+use ab_glyph::FontVec;
+use ab_glyph::Glyph;
 use smearor_commons_buffer::BufferViewMut;
 use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_buffer::Rgba;
@@ -71,6 +73,28 @@ impl DrawOps for BufferViewMut<'_, Rgba> {
 
     fn draw_progress_bar(&mut self, value: f32, color: impl Into<Color<u8>>) {
         progress::draw_progress_bar(self, value, color);
+    }
+}
+
+/// Internal raster primitives shared by the [`DrawOps`] implementations.
+///
+/// `draw_glyph` rasterizes one `ab_glyph` glyph with alpha blending;
+/// `draw_text_bitmap` is the fontless bitmap fallback. Kept private so
+/// they stay out of the public API surface.
+pub(super) trait RasterOps {
+    /// Draw a single glyph onto the view with alpha blending.
+    fn draw_glyph(&mut self, font: &FontVec, glyph: &Glyph, color: Color<u8>);
+    /// Simple bitmap text renderer used when no font is available.
+    fn draw_text_bitmap(&mut self, text: &str, is_active: bool);
+}
+
+impl RasterOps for BufferViewMut<'_, Rgba> {
+    fn draw_glyph(&mut self, font: &FontVec, glyph: &Glyph, color: Color<u8>) {
+        glyph::draw_glyph(self, font, glyph, color);
+    }
+
+    fn draw_text_bitmap(&mut self, text: &str, is_active: bool) {
+        pixel::draw_text_bitmap(self, text, is_active);
     }
 }
 

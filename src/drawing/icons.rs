@@ -3,7 +3,7 @@
 //! Provides functions to draw Nerd Font icons by name or codepoint,
 //! icon placeholders, and icon grids onto raw RGBA pixel buffers.
 
-use super::glyph::draw_glyph;
+use super::RasterOps;
 use super::glyph::glyph_fit_scale;
 use super::progress::default_text_color;
 use ab_glyph::Font;
@@ -13,6 +13,7 @@ use nerd_fonts_rs::fonts::nerd_font;
 use smearor_commons_buffer::BufferViewMut;
 use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Pixels;
 use tracing::debug;
 
 /// Draw a Nerd Font icon centered on the image, occupying the upper portion.
@@ -48,10 +49,10 @@ pub(super) fn draw_nerd_font_icon(
 
     let color: Color<u8> = icon_color.map(|c| c.into()).unwrap_or_else(|| default_text_color(is_active));
 
-    let icon_size = size.x.min(size.y) as f32 * 0.6;
+    let icon_size = Pixels::new(size.x.min(size.y) as f32 * 0.6);
     let glyph_id = font.glyph_id(codepoint);
     let em_scale = glyph_fit_scale(font, glyph_id, icon_size);
-    let scale = PxScale::from(em_scale);
+    let scale = PxScale::from(em_scale.as_raw());
 
     // Use outline px_bounds for precise centering (glyph_bounds includes side bearings)
     let probe = glyph_id.with_scale(scale);
@@ -62,7 +63,7 @@ pub(super) fn draw_nerd_font_icon(
         let pos_x = (size.x as f32 - glyph_w) / 2.0 - pb.min.x;
         let pos_y = (size.y as f32 * 0.4) - glyph_h / 2.0 - pb.min.y;
         let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pos_x, pos_y));
-        draw_glyph(view, font, &glyph, color);
+        view.draw_glyph(font, &glyph, color);
     } else {
         // Fallback: use glyph_bounds
         let bounds = font.glyph_bounds(&probe);
@@ -71,7 +72,7 @@ pub(super) fn draw_nerd_font_icon(
         let pos_x = (size.x as f32 - glyph_w) / 2.0 - bounds.min.x;
         let pos_y = (size.y as f32 * 0.4) - glyph_h / 2.0 - bounds.min.y;
         let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pos_x, pos_y));
-        draw_glyph(view, font, &glyph, color);
+        view.draw_glyph(font, &glyph, color);
     }
 }
 
@@ -117,8 +118,8 @@ pub(super) fn draw_nerd_font_codepoint(
     };
 
     let glyph_id = font.glyph_id(codepoint);
-    let em_scale = glyph_fit_scale(font, glyph_id, icon_size);
-    let scale = PxScale::from(em_scale);
+    let em_scale = glyph_fit_scale(font, glyph_id, Pixels::new(icon_size));
+    let scale = PxScale::from(em_scale.as_raw());
 
     // Center the glyph at (center_x, center_y) using outline px_bounds
     let color: Color<u8> = color.into();
@@ -128,13 +129,13 @@ pub(super) fn draw_nerd_font_codepoint(
         let pos_x = center_x - pb.width() / 2.0 - pb.min.x;
         let pos_y = center_y - pb.height() / 2.0 - pb.min.y;
         let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pos_x, pos_y));
-        draw_glyph(view, font, &glyph, color);
+        view.draw_glyph(font, &glyph, color);
     } else {
         let bounds = font.glyph_bounds(&probe);
         let pos_x = center_x - bounds.width() / 2.0 - bounds.min.x;
         let pos_y = center_y - bounds.height() / 2.0 - bounds.min.y;
         let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pos_x, pos_y));
-        draw_glyph(view, font, &glyph, color);
+        view.draw_glyph(font, &glyph, color);
     }
 }
 
@@ -155,7 +156,7 @@ pub(super) fn draw_icon_grid(
     let rows = (icons.len() as u32).div_ceil(grid_cols).max(1);
     let cell_w = size.x / grid_cols;
     let cell_h = size.y / rows;
-    let icon_size = cell_w.min(cell_h) as f32 * 0.6;
+    let icon_size = Pixels::new(cell_w.min(cell_h) as f32 * 0.6);
     let color = default_text_color(is_active);
 
     for (i, icon_name) in icons.iter().enumerate() {
@@ -171,7 +172,7 @@ pub(super) fn draw_icon_grid(
 
         let glyph_id = font.glyph_id(codepoint);
         let em_scale = glyph_fit_scale(font, glyph_id, icon_size);
-        let scale = PxScale::from(em_scale);
+        let scale = PxScale::from(em_scale.as_raw());
 
         // Center the glyph in its cell using outline px_bounds
         let probe = glyph_id.with_scale(scale);
@@ -180,13 +181,13 @@ pub(super) fn draw_icon_grid(
             let pos_x = cx as f32 - pb.width() / 2.0 - pb.min.x;
             let pos_y = cy as f32 - pb.height() / 2.0 - pb.min.y;
             let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pos_x, pos_y));
-            draw_glyph(view, font, &glyph, color);
+            view.draw_glyph(font, &glyph, color);
         } else {
             let bounds = font.glyph_bounds(&probe);
             let pos_x = cx as f32 - bounds.width() / 2.0 - bounds.min.x;
             let pos_y = cy as f32 - bounds.height() / 2.0 - bounds.min.y;
             let glyph: Glyph = glyph_id.with_scale_and_position(scale, ab_glyph::point(pos_x, pos_y));
-            draw_glyph(view, font, &glyph, color);
+            view.draw_glyph(font, &glyph, color);
         }
     }
 }
