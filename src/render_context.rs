@@ -5,9 +5,11 @@
 //! [`crate::PixelBuffer`]. This eliminates the boilerplate of passing `pixels`,
 //! `width`, `height`, and colors to every `draw_*` call.
 
-use crate::pixel_buffer::PixelBuffer;
-use crate::size::Size;
+use crate::drawing::DrawOps;
+use smearor_commons_buffer::PixelBuffer;
+use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Size;
 
 /// Builder context for rendering Nerd Font icons, text, and UI elements
 /// onto a raw RGBA pixel buffer.
@@ -18,9 +20,9 @@ use smearor_commons_color::Color;
 /// # Examples
 ///
 /// ```no_run
-/// use pixel_drawing::PixelBuffer;
+/// use smearor_commons_buffer::PixelBuffer;
 /// use pixel_drawing::RenderContext;
-/// use pixel_drawing::Size;
+/// use smearor_commons_geometry::Size;
 /// use smearor_commons_color::Color;
 ///
 /// let mut buf = PixelBuffer::new(Size::new(96, 96));
@@ -35,7 +37,7 @@ use smearor_commons_color::Color;
 #[derive(Debug)]
 pub struct RenderContext<'a> {
     /// Target pixel buffer (RGBA, row-major).
-    buf: &'a mut PixelBuffer,
+    buf: &'a mut PixelBuffer<Rgba>,
     /// Optional background fill color, applied by [`RenderContext::fill_background`].
     background: Option<Color<f64>>,
     /// Default color for icons and progress bars.
@@ -48,7 +50,7 @@ pub struct RenderContext<'a> {
 
 impl<'a> RenderContext<'a> {
     /// Creates a new `RenderContext` with default colors and inactive state.
-    pub fn new(buf: &'a mut PixelBuffer) -> Self {
+    pub fn new(buf: &'a mut PixelBuffer<Rgba>) -> Self {
         Self {
             buf,
             background: None,
@@ -98,9 +100,9 @@ impl<'a> RenderContext<'a> {
     /// font is unavailable.
     pub fn draw_icon(&mut self, codepoint: char) {
         let size = self.buf.size();
-        let icon_size = size.width().min(size.height()) as f32 * 0.6;
+        let icon_size = size.x.min(size.y) as f32 * 0.6;
         self.buf
-            .draw_nerd_font_codepoint(codepoint, size.width() as f32 / 2.0, size.height() as f32 * 0.4, icon_size, self.icon_color);
+            .draw_nerd_font_codepoint(codepoint, size.x as f32 / 2.0, size.y as f32 * 0.4, icon_size, self.icon_color);
     }
 
     /// Draws a Nerd Font icon by name, resolving the codepoint via the
@@ -125,7 +127,7 @@ impl<'a> RenderContext<'a> {
     /// Uses the configured `text_color`. The font size is derived from the
     /// buffer height unless overridden.
     pub fn draw_text(&mut self, text: &str, baseline_y: f32) {
-        let font_size = (self.buf.height() as f32 * 0.22).max(8.0);
+        let font_size = (self.buf.height().as_raw() as f32 * 0.22).max(8.0);
         self.buf.draw_text_centered(text, baseline_y, font_size, self.text_color);
     }
 
@@ -152,16 +154,16 @@ impl<'a> RenderContext<'a> {
 
     /// Returns the buffer width in pixels.
     pub fn width(&self) -> u32 {
-        self.buf.width()
+        self.buf.width().as_raw()
     }
 
     /// Returns the buffer height in pixels.
     pub fn height(&self) -> u32 {
-        self.buf.height()
+        self.buf.height().as_raw()
     }
 
     /// Returns the buffer dimensions.
-    pub fn size(&self) -> Size {
+    pub fn size(&self) -> Size<u32> {
         self.buf.size()
     }
 }
@@ -180,7 +182,7 @@ mod tests {
         let mut ctx = RenderContext::new(&mut buf).background(color);
         ctx.fill_background();
 
-        for px in buf.pixels().chunks_exact(4) {
+        for px in buf.pixels().as_chunks::<4>().0.iter() {
             assert_eq!(px, &expected);
         }
     }

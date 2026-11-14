@@ -17,10 +17,11 @@
 
 use nerd_fonts_rs::NerdFonts;
 use nerd_fonts_rs::init;
-use pixel_drawing::pixel_buffer::PixelBuffer;
+use pixel_drawing::DrawOps;
 use pixel_drawing::render_context::RenderContext;
-use pixel_drawing::size::Size;
+use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Size;
 
 use gtk4::Align;
 use gtk4::Application;
@@ -129,8 +130,8 @@ fn resolve_codepoint(name: &str) -> Option<char> {
 fn pixels_to_texture(buf: &PixelBuffer) -> gtk4::gdk::MemoryTexture {
     let size = buf.size();
     let bytes = glib::Bytes::from(buf.pixels());
-    let rowstride = size.width() * 4;
-    gtk4::gdk::MemoryTexture::new(size.width() as i32, size.height() as i32, gtk4::gdk::MemoryFormat::R8g8b8a8, &bytes, rowstride as usize)
+    let rowstride = size.x * 4;
+    gtk4::gdk::MemoryTexture::new(size.x as i32, size.y as i32, gtk4::gdk::MemoryFormat::R8g8b8a8, &bytes, rowstride as usize)
 }
 
 fn make_image(texture: &gtk4::gdk::MemoryTexture, size: u32) -> Image {
@@ -175,7 +176,7 @@ fn build_fill_background_section() -> Frame {
     buf.fill_background(Color::<f64>::new(0.2, 0.5, 0.8));
 
     let texture = pixels_to_texture(&buf);
-    let image = make_image(&texture, size.width());
+    let image = make_image(&texture, size.x);
     section.append(&image);
 
     Frame::builder().label("fill_background").child(&section).build()
@@ -227,7 +228,7 @@ fn build_icon_rendering_section() -> Frame {
         buf.draw_label_text(&icon_name.replace("nf-", ""), false, None);
 
         let texture = pixels_to_texture(&buf);
-        let image = make_image(&texture, icon_size.width());
+        let image = make_image(&texture, icon_size.x);
 
         let col = (i as u32) % cols;
         let row = (i as u32) / cols;
@@ -240,7 +241,7 @@ fn build_icon_rendering_section() -> Frame {
     placeholder_buf.draw_icon_placeholder(false);
 
     let placeholder_texture = pixels_to_texture(&placeholder_buf);
-    let placeholder_image = make_image(&placeholder_texture, icon_size.width());
+    let placeholder_image = make_image(&placeholder_texture, icon_size.x);
     grid.attach(&placeholder_image, cols as i32, 0, 1, 1);
 
     section.append(&grid);
@@ -279,10 +280,10 @@ fn build_codepoint_section() -> Frame {
     let size = Size::new(96, 96);
     let mut buf = PixelBuffer::new(size);
     buf.fill_background(Color::<f64>::new(25.0 / 255.0, 25.0 / 255.0, 35.0 / 255.0));
-    buf.draw_nerd_font_codepoint('\u{F11B}', size.width() as f32 / 2.0, size.height() as f32 / 2.0, 48.0, Color::<u8>::new(100, 180, 255));
+    buf.draw_nerd_font_codepoint('\u{F11B}', size.x as f32 / 2.0, size.y as f32 / 2.0, 48.0, Color::<u8>::new(100, 180, 255));
 
     let texture = pixels_to_texture(&buf);
-    let image = make_image(&texture, size.width());
+    let image = make_image(&texture, size.x);
     section.append(&image);
 
     Frame::builder().label("Codepoint Rendering").child(&section).build()
@@ -322,7 +323,7 @@ fn build_icon_grid_section() -> Frame {
     buf.draw_icon_grid(GALLERY_ICONS, 2, true, resolve_codepoint);
 
     let texture = pixels_to_texture(&buf);
-    let image = make_image(&texture, size.width());
+    let image = make_image(&texture, size.x);
     section.append(&image);
 
     Frame::builder().label("Icon Grid").child(&section).build()
@@ -368,9 +369,9 @@ fn build_progress_bar_section() -> Frame {
     let progress_texture = render_progress(0.65);
     let progress_image = Image::from_paintable(Some(&progress_texture));
     progress_image.set_halign(Align::Center);
-    progress_image.set_pixel_size(progress_size.width() as i32);
-    progress_image.set_width_request(progress_size.width() as i32);
-    progress_image.set_height_request(progress_size.height() as i32);
+    progress_image.set_pixel_size(progress_size.x as i32);
+    progress_image.set_width_request(progress_size.x as i32);
+    progress_image.set_height_request(progress_size.y as i32);
     section.append(&progress_image);
 
     let progress_slider = Scale::with_range(Orientation::Horizontal, 0.0, 1.0, 0.01);
@@ -429,18 +430,18 @@ fn build_text_section() -> Frame {
     label_buf.draw_label_text("star", true, None);
 
     let label_texture = pixels_to_texture(&label_buf);
-    let label_image = make_image(&label_texture, label_size.width());
+    let label_image = make_image(&label_texture, label_size.x);
     row.append(&label_image);
 
     // draw_text_centered
     let text_size = Size::new(128, 128);
     let mut text_buf = PixelBuffer::new(text_size);
     text_buf.fill_background(Color::<f64>::new(25.0 / 255.0, 25.0 / 255.0, 35.0 / 255.0));
-    text_buf.draw_text_centered("Centered", text_size.height() as f32 / 2.0, 20.0, Color::<u8>::new(255, 255, 255));
-    text_buf.draw_text_centered("Text", text_size.height() as f32 / 2.0 + 24.0, 16.0, Color::<u8>::new(100, 180, 255));
+    text_buf.draw_text_centered("Centered", text_size.y as f32 / 2.0, 20.0, Color::<u8>::new(255, 255, 255));
+    text_buf.draw_text_centered("Text", text_size.y as f32 / 2.0 + 24.0, 16.0, Color::<u8>::new(100, 180, 255));
 
     let text_texture = pixels_to_texture(&text_buf);
-    let text_image = make_image(&text_texture, text_size.width());
+    let text_image = make_image(&text_texture, text_size.x);
     row.append(&text_image);
 
     section.append(&row);
@@ -488,7 +489,7 @@ fn build_render_context_section() -> Frame {
     ctx.draw_label("heart");
 
     let texture = pixels_to_texture(&buf);
-    let image = make_image(&texture, size.width());
+    let image = make_image(&texture, size.x);
     section.append(&image);
 
     Frame::builder().label("RenderContext").child(&section).build()

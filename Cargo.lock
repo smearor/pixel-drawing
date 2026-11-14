@@ -215,9 +215,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-expr"
-version = "0.20.10"
+version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ba9e9ec16c447027685b1f897b720e18e9a8afd00bd7332c483537e38086c9f"
+checksum = "edd44d82755fb9210fb10d9daf8dd7e522da0efe1d5f263cffc5db07725663ff"
 dependencies = [
  "smallvec",
  "target-lexicon",
@@ -1071,7 +1071,9 @@ dependencies = [
  "gtk4",
  "miette",
  "nerd-fonts-rs",
+ "smearor-commons-buffer",
  "smearor-commons-color",
+ "smearor-commons-geometry",
  "thiserror 2.0.21",
  "tracing",
 ]
@@ -1305,9 +1307,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "149309498a5f7334b12ddae0cad8aba81ce785fe91755068867e017cf98fee46"
 
 [[package]]
+name = "smearor-commons-buffer"
+version = "0.1.0"
+source = "git+https://github.com/smearor/smearor-commons.git#d9ff5a32c71b7c53ddd6ff34a8bd9237bd148ab3"
+dependencies = [
+ "serde",
+ "smearor-commons-geometry",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#f85ac26b02d7cf328e36f978feb5d10a83bcca67"
+source = "git+https://github.com/smearor/smearor-commons.git#d9ff5a32c71b7c53ddd6ff34a8bd9237bd148ab3"
+dependencies = [
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "smearor-commons-geometry"
+version = "0.1.0"
+source = "git+https://github.com/smearor/smearor-commons.git#d9ff5a32c71b7c53ddd6ff34a8bd9237bd148ab3"
 dependencies = [
  "serde",
  "thiserror 2.0.21",

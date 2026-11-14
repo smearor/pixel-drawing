@@ -4,13 +4,14 @@
 //! scale computation (with caching), and text width truncation.
 
 use super::pixel::blend_pixel;
-use crate::pixel_buffer::PixelBuffer;
 use ab_glyph::Font;
 use ab_glyph::FontVec;
 use ab_glyph::Glyph;
 use ab_glyph::PxScaleFont;
 use ab_glyph::ScaleFont;
 use ahash::AHashMap;
+use smearor_commons_buffer::BufferViewMut;
+use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
 use std::cell::RefCell;
 
@@ -88,30 +89,29 @@ pub(super) fn truncate_text_to_width(text: &str, scaled_font: &PxScaleFont<&Font
     result
 }
 
-impl PixelBuffer {
-    /// Draw a single glyph onto the pixel buffer with alpha blending.
-    pub(super) fn draw_glyph(&mut self, font: &FontVec, glyph: &Glyph, color: Color<u8>) {
-        let size = self.size();
-        let pixels = self.pixels_mut();
-        if let Some(outline) = font.outline_glyph(glyph.clone()) {
-            let bounds = outline.px_bounds();
-            let px = bounds.min.x.round() as i32;
-            let py = bounds.min.y.round() as i32;
-            let bytes: [u8; 4] = color.into();
+/// Draw a single glyph onto the view with alpha blending.
+pub(super) fn draw_glyph(view: &mut BufferViewMut<Rgba>, font: &FontVec, glyph: &Glyph, color: Color<u8>) {
+    let size = view.size();
+    let stride = view.stride().as_usize();
+    let pixels = view.data_mut();
+    if let Some(outline) = font.outline_glyph(glyph.clone()) {
+        let bounds = outline.px_bounds();
+        let px = bounds.min.x.round() as i32;
+        let py = bounds.min.y.round() as i32;
+        let bytes: [u8; 4] = color.into();
 
-            outline.draw(|gx, gy, coverage| {
-                let x = px + gx as i32;
-                let y = py + gy as i32;
-                if x >= 0 && x < size.width() as i32 && y >= 0 && y < size.height() as i32 {
-                    let idx = ((y as u32 * size.width() + x as u32) * 4) as usize;
-                    let alpha = (coverage * bytes[3] as f32) as u8;
-                    if alpha > 0 {
-                        let blended = blend_pixel(&pixels[idx..idx + 4], &bytes, alpha);
-                        pixels[idx..idx + 4].copy_from_slice(&blended);
-                    }
+        outline.draw(|gx, gy, coverage| {
+            let x = px + gx as i32;
+            let y = py + gy as i32;
+            if x >= 0 && x < size.x as i32 && y >= 0 && y < size.y as i32 {
+                let idx = y as usize * stride + x as usize * 4;
+                let alpha = (coverage * bytes[3] as f32) as u8;
+                if alpha > 0 {
+                    let blended = blend_pixel(&pixels[idx..idx + 4], &bytes, alpha);
+                    pixels[idx..idx + 4].copy_from_slice(&blended);
                 }
-            });
-        }
+            }
+        });
     }
 }
 

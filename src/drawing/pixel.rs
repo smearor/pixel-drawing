@@ -4,8 +4,10 @@
 //! background fills, alpha blending, and bitmap text fallback.
 
 use super::progress::default_text_color;
-use crate::pixel_buffer::PixelBuffer;
+use smearor_commons_buffer::BufferViewMut;
+use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Pixels;
 
 /// Alpha-blend a source color over an existing pixel.
 pub(super) fn blend_pixel(dst: &[u8], src: &[u8; 4], alpha: u8) -> [u8; 4] {
@@ -21,47 +23,50 @@ pub(super) fn blend_pixel(dst: &[u8], src: &[u8; 4], alpha: u8) -> [u8; 4] {
     [r.round() as u8, g.round() as u8, b.round() as u8, (out_alpha * 255.0).round() as u8]
 }
 
-impl PixelBuffer {
-    /// Fill the entire pixel buffer with a solid background color.
-    ///
-    /// Reinterprets the `&mut [u8]` buffer as `&mut [u32]` (RGBA = 4 bytes =
-    /// one `u32` in little-endian) and uses `slice::fill()` for SIMD-vectorized
-    /// writes instead of a pixel-by-pixel nested loop.
-    ///
-    /// If the buffer is smaller than `width * height * 4`, only the available
-    /// bytes are filled. If it is larger, only the expected region is written.
-    pub fn fill_background(&mut self, color: impl Into<Color<u8>>) {
-        let size = self.size();
-        let pixels = self.pixels_mut();
-        let expected = (size.width() as usize) * (size.height() as usize) * 4;
-        let len = pixels.len().min(expected);
-        let color: Color<u8> = color.into();
-        let color_u32 = u32::from_le_bytes(color.into());
-        let pixels_u32: &mut [u32] = bytemuck::cast_slice_mut(&mut pixels[..len]);
-        pixels_u32.fill(color_u32);
-    }
+/// Simple bitmap text renderer used when no font is available.
+pub(super) fn draw_text_bitmap(view: &mut BufferViewMut<Rgba>, text: &str, _is_active: bool) {
+    let size = view.size();
+    let stride = view.stride().as_usize();
+    let pixels = view.data_mut();
+    let color = default_text_color(false);
+    let bytes: [u8; 4] = color.into();
+    let char_w = 6u32;
+    let char_h = 8u32;
+    let total_w = text.len() as u32 * char_w;
+    let start_x = size.x.saturating_sub(total_w) / 2;
+    let start_y = size.y.saturating_sub(char_h) / 2;
 
-    /// Simple bitmap text renderer used when no font is available.
-    pub(super) fn draw_text_bitmap(&mut self, text: &str, _is_active: bool) {
-        let size = self.size();
-        let pixels = self.pixels_mut();
-        let color = default_text_color(false);
-        let bytes: [u8; 4] = color.into();
-        let char_w = 6u32;
-        let char_h = 8u32;
-        let total_w = text.len() as u32 * char_w;
-        let start_x = size.width().saturating_sub(total_w) / 2;
-        let start_y = size.height().saturating_sub(char_h) / 2;
-
-        for (i, _ch) in text.chars().enumerate() {
-            let x = start_x + i as u32 * char_w;
-            for dy in 0..char_h {
-                for dx in 0..char_w {
-                    if x + dx < size.width() && start_y + dy < size.height() {
-                        let idx = (((start_y + dy) * size.width() + x + dx) * 4) as usize;
-                        pixels[idx..idx + 4].copy_from_slice(&bytes);
-                    }
+    for (i, _ch) in text.chars().enumerate() {
+        let x = start_x + i as u32 * char_w;
+        for dy in 0..char_h {
+            for dx in 0..char_w {
+                if x + dx < size.x && start_y + dy < size.y {
+                    let idx = (start_y + dy) as usize * stride + (x + dx) as usize * 4;
+                    pixels[idx..idx + 4].copy_from_slice(&bytes);
                 }
+            }
+        }
+    }
+}
+
+/// Fill the entire view with a solid background color.
+///
+/// Packed views reinterpret the `&mut [u8]` data as `&mut [u32]` (RGBA
+/// = 4 bytes = one `u32` in little-endian) and use `slice::fill()` for
+/// SIMD-vectorized writes. Strided views fill each row's pixel bytes
+/// and leave row padding untouched.
+pub(super) fn fill_background(view: &mut BufferViewMut<Rgba>, color: impl Into<Color<u8>>) {
+    let color: Color<u8> = color.into();
+    if view.is_packed() {
+        let len = view.metadata().required_len(4);
+        let color_u32 = u32::from_le_bytes(color.into());
+        let pixels_u32: &mut [u32] = bytemuck::cast_slice_mut(&mut view.data_mut()[..len]);
+        pixels_u32.fill(color_u32);
+    } else {
+        let bytes: [u8; 4] = color.into();
+        for y in 0..view.height().as_raw() {
+            if let Some(row) = view.row_mut(Pixels::new(y)) {
+                row.as_chunks_mut::<4>().0.fill(bytes);
             }
         }
     }
@@ -70,7 +75,11 @@ impl PixelBuffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::size::Size;
+    use crate::DrawOps;
+    use smearor_commons_buffer::BufferMetadata;
+    use smearor_commons_buffer::PixelBuffer;
+    use smearor_commons_buffer::Stride;
+    use smearor_commons_geometry::Size;
 
     #[test]
     fn fill_background_fills_all_pixels() {
@@ -79,7 +88,7 @@ mod tests {
         let expected: [u8; 4] = Color::<u8>::from(color).into();
         buf.fill_background(color);
 
-        for px in buf.pixels().chunks_exact(4) {
+        for px in buf.pixels().as_chunks::<4>().0.iter() {
             assert_eq!(px, &expected);
         }
     }
@@ -94,27 +103,24 @@ mod tests {
     }
 
     #[test]
-    fn fill_background_undersized_buffer_fills_available() {
-        // Simulate an undersized buffer: Size says 2x2 (16 bytes) but only 8 bytes present
-        let mut buf = PixelBuffer::from_raw(vec![0u8; 8], Size::new(2, 2));
-        let color = Color::<f64>::new(10.0 / 255.0, 20.0 / 255.0, 30.0 / 255.0);
-        let expected: [u8; 4] = Color::<u8>::from(color).into();
-        buf.fill_background(color);
-        // Only 2 pixels fit in 8 bytes
-        assert_eq!(&buf.pixels()[..4], &expected);
-        assert_eq!(&buf.pixels()[4..8], &expected);
-    }
+    fn fill_background_strided_view_leaves_padding_untouched() {
+        // 2x2 pixels, stride 16 bytes (8 padding bytes per row):
+        // required = (2 - 1) * 16 + 2 * 4 = 24, plus a trailing slice tail.
+        let mut data = vec![0u8; 32];
+        let metadata = BufferMetadata::new(Pixels::new(2), Pixels::new(2), Stride::new(16));
+        let color = Color::<u8>::new(200, 100, 50);
 
-    #[test]
-    fn fill_background_oversized_buffer_fills_expected_region() {
-        // Simulate an oversized buffer: Size says 2x2 (16 bytes) but 24 bytes present
-        let mut buf = PixelBuffer::from_raw(vec![0u8; 24], Size::new(2, 2));
-        let color = Color::<f64>::new(10.0 / 255.0, 20.0 / 255.0, 30.0 / 255.0);
-        buf.fill_background(color);
-        // First 16 bytes (2x2x4) should be filled
-        assert_eq!(&buf.pixels()[..16], &[10, 20, 30, 255, 10, 20, 30, 255, 10, 20, 30, 255, 10, 20, 30, 255]);
-        // Remaining 8 bytes should be untouched
-        assert_eq!(&buf.pixels()[16..], &[0, 0, 0, 0, 0, 0, 0, 0]);
+        BufferViewMut::<Rgba>::from_raw(&mut data, metadata).unwrap().fill_background(color);
+
+        let bytes: [u8; 4] = color.into();
+        // row 0 pixels at [0..8), padding at [8..16)
+        assert_eq!(&data[0..4], &bytes);
+        assert_eq!(&data[4..8], &bytes);
+        assert!(data[8..16].iter().all(|&b| b == 0), "row padding must stay untouched");
+        // row 1 pixels at [16..24), memory beyond the view extent untouched
+        assert_eq!(&data[16..20], &bytes);
+        assert_eq!(&data[20..24], &bytes);
+        assert!(data[24..].iter().all(|&b| b == 0), "memory beyond the view extent must stay untouched");
     }
 
     #[test]
@@ -140,14 +146,6 @@ mod tests {
     }
 
     #[test]
-    fn blend_pixel_zero_alpha_preserves_dst() {
-        let dst = [10, 20, 30, 255];
-        let src = [255, 0, 0, 0];
-        let result = blend_pixel(&dst, &src, 0);
-        assert_eq!(result, [10, 20, 30, 255]);
-    }
-
-    #[test]
     fn blend_pixel_half_alpha_blends() {
         let dst = [0, 0, 0, 255];
         let src = [255, 255, 255, 255];
@@ -167,16 +165,16 @@ mod tests {
     #[test]
     fn draw_text_bitmap_renders_pixels() {
         let mut buf = PixelBuffer::new(Size::new(64, 16));
-        buf.draw_text_bitmap("AB", false);
+        draw_text_bitmap(&mut buf.view_mut(), "AB", false);
 
-        let non_zero = buf.pixels().chunks_exact(4).filter(|px| px.iter().any(|&b| b != 0)).count();
+        let non_zero = buf.pixels().as_chunks::<4>().0.iter().filter(|px| px.iter().any(|&b| b != 0)).count();
         assert!(non_zero > 0, "bitmap text should render some pixels");
     }
 
     #[test]
     fn draw_text_bitmap_empty_string_does_not_render() {
         let mut buf = PixelBuffer::new(Size::new(32, 16));
-        buf.draw_text_bitmap("", false);
+        draw_text_bitmap(&mut buf.view_mut(), "", false);
 
         assert!(buf.pixels().iter().all(|&p| p == 0), "no pixels should be rendered for empty string");
     }
