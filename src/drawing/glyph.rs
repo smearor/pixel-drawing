@@ -3,16 +3,14 @@
 //! Provides single-glyph rasterization with alpha blending, glyph-to-pixel
 //! scale computation (with caching), and text width truncation.
 
-use super::pixel::blend_pixel;
+use ab_glyph::Font;
 use ab_glyph::FontVec;
 use ab_glyph::Glyph;
+use ab_glyph::GlyphId;
+use ab_glyph::PxScale;
 use ab_glyph::PxScaleFont;
 use ab_glyph::ScaleFont;
-use ab_glyph::{Font, GlyphId};
 use ahash::AHashMap;
-use smearor_commons_buffer::BufferViewMut;
-use smearor_commons_buffer::Rgba;
-use smearor_commons_color::Color;
 use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Rect;
 use smearor_commons_geometry::Vec2;
@@ -52,68 +50,56 @@ fn glyph_fit_scale_uncached(font: &FontVec, glyph_id: GlyphId, target_px: Pixels
     // Probe at a large enough scale to get accurate pixel measurements.
     // outline_glyph rounds to integer pixels, so scale=1.0 gives 0 or 1 px
     // which is too imprecise. Use 100.0 em and scale the result.
-    let probe_scale = 100.0_f32;
-    let probe = glyph_id.with_scale(probe_scale);
+    let probe_scale = Pixels::new(100.0_f32);
+    let probe = glyph_id.with_scale(PxScale::from(probe_scale.as_raw()));
     if let Some(outline) = font.outline_glyph(probe) {
-        let pb = outline.px_bounds();
-        let gw = pb.width().max(0.0);
-        let gh = pb.height().max(0.0);
-        let max_g = gw.max(gh);
-        if max_g > 0.01 {
+        let bounds: Rect<Pixels, f32> = outline.px_bounds().into();
+        let max_g = Pixels::new(bounds.size.x.max(bounds.size.y).max(0.0));
+        if max_g > Pixels::new(0.01) {
             // max_g is the pixel size at probe_scale em.
             // To get target_px pixels: em_scale = target_px * probe_scale / max_g
-            return Pixels::new(target_px.as_raw() * probe_scale / max_g);
+            return Pixels::new(target_px.as_raw() * probe_scale.as_raw() / max_g.as_raw());
         }
     }
     // Fallback: use glyph_bounds (design-space, not pixel-accurate)
     let probe = glyph_id.with_scale(1.0);
-    let bounds = font.glyph_bounds(&probe);
-    let gw = bounds.width().max(0.0);
-    let gh = bounds.height().max(0.0);
-    let max_g = gw.max(gh);
-    if max_g > 0.01 { Pixels::new(target_px.as_raw() / max_g) } else { target_px }
+    let bounds: Rect<Pixels, f32> = font.glyph_bounds(&probe).into();
+    let max_g = Pixels::new(bounds.size.x.max(bounds.size.y).max(0.0));
+    if max_g > Pixels::new(0.01) {
+        Pixels::new(target_px.as_raw() / max_g.as_raw())
+    } else {
+        target_px
+    }
+}
+
+/// A glyph scaled to `scale` and positioned so that its pixel bounds
+/// center lands on `target` - outline `px_bounds` when available
+/// (precise for centering), `glyph_bounds` as fallback.
+pub(super) fn centered_glyph(font: &FontVec, glyph_id: GlyphId, scale: PxScale, target: Vec2<Pixels, f32>) -> Glyph {
+    let probe = glyph_id.with_scale(scale);
+    let bounds: Rect<Pixels, f32> = font
+        .outline_glyph(probe.clone())
+        .map(|outline| outline.px_bounds().into())
+        .unwrap_or_else(|| font.glyph_bounds(&probe).into());
+    glyph_id.with_scale_and_position(scale, target - bounds.center())
 }
 
 /// Truncate text to fit within a maximum pixel width.
 ///
 /// Uses incremental width tracking — O(n) in the number of characters.
-pub(super) fn truncate_text_to_width(text: &str, scaled_font: &PxScaleFont<&FontVec>, max_width: f32) -> String {
+pub(super) fn truncate_text_to_width(text: &str, scaled_font: &PxScaleFont<&FontVec>, max_width: Pixels<f32>) -> String {
     let mut result = String::new();
-    let mut current_width: f32 = 0.0;
+    let mut current_width = Pixels::new(0.0_f32);
     for ch in text.chars() {
         let glyph_id = scaled_font.glyph_id(ch);
-        let char_width = scaled_font.h_advance(glyph_id);
+        let char_width = Pixels::new(scaled_font.h_advance(glyph_id));
         if current_width + char_width > max_width {
             break;
         }
-        current_width += char_width;
+        current_width = current_width + char_width;
         result.push(ch);
     }
     result
-}
-
-/// Draw a single glyph onto the view with alpha blending.
-pub(super) fn draw_glyph(view: &mut BufferViewMut<Rgba>, font: &FontVec, glyph: &Glyph, color: Color<u8>) {
-    let size = view.size();
-    let stride = view.stride().as_usize();
-    let clip = Rect::new(Vec2::<Pixels, i32>::default(), Vec2::new(size.x as i32, size.y as i32));
-    let pixels = view.data_mut();
-    if let Some(outline) = font.outline_glyph(glyph.clone()) {
-        let bounds = outline.px_bounds();
-        let pos = Vec2::<Pixels, i32>::new(bounds.min.x.round() as i32, bounds.min.y.round() as i32);
-
-        outline.draw(|gx, gy, coverage| {
-            let p = pos + Vec2::<Pixels, i32>::new(gx as i32, gy as i32);
-            if clip.contains(&p) {
-                let idx = p.y as usize * stride + p.x as usize * 4;
-                let alpha = (coverage * color.a as f32) as u8;
-                if alpha > 0 {
-                    let blended = blend_pixel(&pixels[idx..idx + 4], &color, alpha);
-                    pixels[idx..idx + 4].copy_from_slice(&blended);
-                }
-            }
-        });
-    }
 }
 
 #[cfg(test)]
@@ -162,7 +148,7 @@ mod tests {
         let scaled_font = font.as_scaled(scale);
         let text = "hi";
 
-        let result = truncate_text_to_width(text, &scaled_font, 1000.0);
+        let result = truncate_text_to_width(text, &scaled_font, Pixels::new(1000.0));
         assert_eq!(result, "hi");
     }
 
@@ -173,7 +159,7 @@ mod tests {
         let scaled_font = font.as_scaled(scale);
         let text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-        let result = truncate_text_to_width(text, &scaled_font, 20.0);
+        let result = truncate_text_to_width(text, &scaled_font, Pixels::new(20.0));
         assert!(result.len() < text.len(), "text should be truncated to fit within 20px");
         assert!(!result.is_empty(), "truncated text should not be empty");
     }
@@ -184,7 +170,7 @@ mod tests {
         let scale = PxScale::from(16.0);
         let scaled_font = font.as_scaled(scale);
 
-        let result = truncate_text_to_width("", &scaled_font, 100.0);
+        let result = truncate_text_to_width("", &scaled_font, Pixels::new(100.0));
         assert!(result.is_empty());
     }
 
@@ -194,7 +180,7 @@ mod tests {
         let scale = PxScale::from(16.0);
         let scaled_font = font.as_scaled(scale);
 
-        let result = truncate_text_to_width("hello", &scaled_font, 0.0);
+        let result = truncate_text_to_width("hello", &scaled_font, Pixels::new(0.0));
         assert!(result.is_empty(), "no characters should fit in zero width");
     }
 }

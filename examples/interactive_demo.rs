@@ -21,7 +21,9 @@ use pixel_drawing::DrawOps;
 use pixel_drawing::render_context::RenderContext;
 use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
+use smearor_commons_geometry::Vec2;
 
 use gtk4::Align;
 use gtk4::Application;
@@ -238,7 +240,7 @@ fn build_icon_rendering_section() -> Frame {
     // Draw a placeholder for an unknown icon
     let mut placeholder_buf = PixelBuffer::new(icon_size);
     placeholder_buf.fill_background(Color::<f64>::new(30.0 / 255.0, 30.0 / 255.0, 30.0 / 255.0));
-    placeholder_buf.draw_icon_placeholder(false);
+    placeholder_buf.draw_icon_placeholder(false, None);
 
     let placeholder_texture = pixels_to_texture(&placeholder_buf);
     let placeholder_image = make_image(&placeholder_texture, icon_size.x);
@@ -280,7 +282,12 @@ fn build_codepoint_section() -> Frame {
     let size = Size::new(96, 96);
     let mut buf = PixelBuffer::new(size);
     buf.fill_background(Color::<f64>::new(25.0 / 255.0, 25.0 / 255.0, 35.0 / 255.0));
-    buf.draw_nerd_font_codepoint('\u{F11B}', size.x as f32 / 2.0, size.y as f32 / 2.0, 48.0, Color::<u8>::new(100, 180, 255));
+    buf.draw_nerd_font_codepoint(
+        '\u{F11B}',
+        Vec2::<Pixels, f32>::new(size.x as f32 / 2.0, size.y as f32 / 2.0),
+        Pixels::new(48.0),
+        Color::<u8>::new(100, 180, 255),
+    );
 
     let texture = pixels_to_texture(&buf);
     let image = make_image(&texture, size.x);
@@ -437,8 +444,8 @@ fn build_text_section() -> Frame {
     let text_size = Size::new(128, 128);
     let mut text_buf = PixelBuffer::new(text_size);
     text_buf.fill_background(Color::<f64>::new(25.0 / 255.0, 25.0 / 255.0, 35.0 / 255.0));
-    text_buf.draw_text_centered("Centered", text_size.y as f32 / 2.0, 20.0, Color::<u8>::new(255, 255, 255));
-    text_buf.draw_text_centered("Text", text_size.y as f32 / 2.0 + 24.0, 16.0, Color::<u8>::new(100, 180, 255));
+    text_buf.draw_text_centered("Centered", Pixels::new(text_size.y as f32 / 2.0), Pixels::new(20.0), Color::<u8>::new(255, 255, 255));
+    text_buf.draw_text_centered("Text", Pixels::new(text_size.y as f32 / 2.0 + 24.0), Pixels::new(16.0), Color::<u8>::new(100, 180, 255));
 
     let text_texture = pixels_to_texture(&text_buf);
     let text_image = make_image(&text_texture, text_size.x);

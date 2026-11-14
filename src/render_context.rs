@@ -9,7 +9,9 @@ use crate::drawing::DrawOps;
 use smearor_commons_buffer::PixelBuffer;
 use smearor_commons_buffer::Rgba;
 use smearor_commons_color::Color;
+use smearor_commons_geometry::Pixels;
 use smearor_commons_geometry::Size;
+use smearor_commons_geometry::Vec2;
 
 /// Builder context for rendering Nerd Font icons, text, and UI elements
 /// onto a raw RGBA pixel buffer.
@@ -22,6 +24,7 @@ use smearor_commons_geometry::Size;
 /// ```no_run
 /// use smearor_commons_buffer::PixelBuffer;
 /// use pixel_drawing::RenderContext;
+/// use smearor_commons_geometry::Pixels;
 /// use smearor_commons_geometry::Size;
 /// use smearor_commons_color::Color;
 ///
@@ -100,9 +103,9 @@ impl<'a> RenderContext<'a> {
     /// font is unavailable.
     pub fn draw_icon(&mut self, codepoint: char) {
         let size = self.buf.size();
-        let icon_size = size.x.min(size.y) as f32 * 0.6;
+        let icon_size = Pixels::new(size.x.min(size.y) as f32 * 0.6);
         self.buf
-            .draw_nerd_font_codepoint(codepoint, size.x as f32 / 2.0, size.y as f32 * 0.4, icon_size, self.icon_color);
+            .draw_nerd_font_codepoint(codepoint, Vec2::<Pixels, f32>::new(size.x as f32 / 2.0, size.y as f32 * 0.4), icon_size, self.icon_color);
     }
 
     /// Draws a Nerd Font icon by name, resolving the codepoint via the
@@ -126,14 +129,14 @@ impl<'a> RenderContext<'a> {
     ///
     /// Uses the configured `text_color`. The font size is derived from the
     /// buffer height unless overridden.
-    pub fn draw_text(&mut self, text: &str, baseline_y: f32) {
-        let font_size = (self.buf.height().as_raw() as f32 * 0.22).max(8.0);
+    pub fn draw_text(&mut self, text: &str, baseline_y: Pixels<f32>) {
+        let font_size = Pixels::new((self.buf.height().as_raw() as f32 * 0.22).max(8.0));
         self.buf.draw_text_centered(text, baseline_y, font_size, self.text_color);
     }
 
     /// Draws text centered horizontally at the given y-baseline with a
     /// custom font size.
-    pub fn draw_text_sized(&mut self, text: &str, baseline_y: f32, font_size: f32) {
+    pub fn draw_text_sized(&mut self, text: &str, baseline_y: Pixels<f32>, font_size: Pixels<f32>) {
         self.buf.draw_text_centered(text, baseline_y, font_size, self.text_color);
     }
 
