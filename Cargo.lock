@@ -1309,9 +1309,10 @@ checksum = "3244542535d5de959d90ec55d1b5ff0fd2bb7b1310223907d5f11932847f7b59"
 [[package]]
 name = "smearor-commons-buffer"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#543f35ac721f166111721b1d0e43724f288be797"
 dependencies = [
  "serde",
+ "smearor-commons-color",
  "smearor-commons-geometry",
  "thiserror 2.0.21",
 ]
@@ -1319,7 +1320,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-color"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#543f35ac721f166111721b1d0e43724f288be797"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -1328,7 +1329,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-font"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#543f35ac721f166111721b1d0e43724f288be797"
 dependencies = [
  "ab_glyph",
  "serde",
@@ -1339,7 +1340,7 @@ dependencies = [
 [[package]]
 name = "smearor-commons-geometry"
 version = "0.1.0"
-source = "git+https://github.com/smearor/smearor-commons.git#0b3d5bb73fa297c0e1eb9210260279ed1030e4e9"
+source = "git+https://github.com/smearor/smearor-commons.git#543f35ac721f166111721b1d0e43724f288be797"
 dependencies = [
  "ab_glyph",
  "serde",
